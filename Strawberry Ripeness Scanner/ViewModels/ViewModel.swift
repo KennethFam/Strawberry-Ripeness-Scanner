@@ -46,7 +46,11 @@ class ViewModel: ObservableObject {
     @Published var showFileAlert = false
     @Published var appError: MyImageError.ErrorType?
     @Published var imageChanged = false
-    @Published var currentUser: User?
+    @Published var currentUser: User? {
+        willSet {
+            
+        }
+    }
     @Published var syncing = false
     
     init() {
@@ -304,7 +308,7 @@ class ViewModel: ObservableObject {
         let _ = fileRef.putData(imageData!, metadata: metadata) { (metadata, error) in
             // check for errors
             if error == nil && metadata != nil {
-                self.currentUser!.imagePaths["\(image.id)"] = "\(userID)/images/\(image.id).jpg"
+                self.currentUser?.imagePaths["\(image.id)"] = "\(userID)/images/\(image.id).jpg"
                 self.pathsUpdated = true
                 // print(self.currentUser!.imagePaths)
             }
@@ -314,14 +318,20 @@ class ViewModel: ObservableObject {
     }
     
     func updatePaths() async {
-        let db = Firestore.firestore().collection("users").document(currentUser!.id)
-        do {
-          try await db.updateData([
-            "imagePaths": currentUser!.imagePaths
-          ])
-            print("imagePaths successfully updated!")
-        } catch {
-            print("Error updating imagePaths: \(error)")
+        if let user = self.currentUser {
+            let db = Firestore.firestore().collection("users").document(user.id)
+            do {
+              try await db.updateData([
+                "imagePaths": currentUser!.imagePaths
+              ])
+                print("imagePaths successfully updated!")
+            } catch {
+                print("Error updating imagePaths: \(error)")
+            }
+        }
+        else {
+            print("User became invalid. Server possibly went down.")
+            return
         }
     }
     
@@ -388,6 +398,11 @@ class ViewModel: ObservableObject {
                         }
                     }
                 }
+            }
+        }
+        if total == 0 {
+            Task { @MainActor in
+                self.syncing = false
             }
         }
     }
