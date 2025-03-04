@@ -63,8 +63,11 @@ struct ProfileView: View {
                             Spacer()
                         }
                     }
-                    .disabled(!vm.syncing)
-                    .opacity(vm.syncing ? 1.0 : 0.5)
+                    .onChange(of: vm.syncing) {
+                        print(vm.syncing)
+                    }
+                    .disabled(vm.syncing)
+                    .opacity(!vm.syncing ? 1.0 : 0.5)
                     
                 }
                 
@@ -82,8 +85,8 @@ struct ProfileView: View {
                             Spacer()
                         }
                     }
-                    .disabled(!vm.syncing)
-                    .opacity(vm.syncing ? 1.0 : 0.5)
+                    .disabled(vm.syncing)
+                    .opacity(!vm.syncing ? 1.0 : 0.5)
                 }
                 .listSectionSpacing(10)
             }
@@ -94,4 +97,5 @@ struct ProfileView: View {
 #Preview {
     ProfileView()
         .environmentObject(AuthViewModel())
+        .environmentObject(ViewModel())
 }
