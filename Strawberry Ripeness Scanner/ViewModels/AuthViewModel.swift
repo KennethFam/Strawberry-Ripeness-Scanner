@@ -24,7 +24,7 @@ class AuthViewModel: ObservableObject {
     @Published var syncing: Bool? {
         didSet {
             if !syncing! {
-                if !cloudEnabledStatus {
+                if !cloudEnabledStatus && userSession != nil{
                     signOut()
                 }
             }
