@@ -23,9 +23,11 @@ class AuthViewModel: ObservableObject {
     @Published var currentUser: User?
     @Published var syncing: Bool? {
         didSet {
-            if !syncing! && logOutAfterSync {
-                signOut()
-                logOutAfterSync = false
+            if !syncing! {
+                if logOutAfterSync {
+                    signOut()
+                    logOutAfterSync = false
+                }
             }
         }
     }
@@ -156,7 +158,7 @@ class AuthViewModel: ObservableObject {
                 do {
                     self.currentUser = try snapshot.data(as: User.self)
                 } catch {
-                    self.logOutAfterSync = true
+                    print("Error retrieving user.\n")
                 }
                 
                 print("User Sync Status: \(self.cloudEnabledStatus)")
