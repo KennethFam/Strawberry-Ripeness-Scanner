@@ -124,7 +124,13 @@ class AuthViewModel: ObservableObject {
                   print("Error fetching user document for syncing: \(error!)")
                   return
                 }
-                self.currentUser = try? snapshot.data(as: User.self)
+                
+                do {
+                    self.currentUser = try snapshot.data(as: User.self)
+                } catch {
+                    self.userSession = nil
+                    self.currentUser = nil
+                }
                 
                 print("User Sync Status: \(self.cloudEnabledStatus)")
             }
