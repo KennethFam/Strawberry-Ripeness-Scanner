@@ -1,168 +1,422 @@
 //
-//  AuthViewModel.swift
+//  ViewModel.swift
 //  Strawberry Ripeness Scanner
 //
-//  Created by Kenneth Pham on 2/26/25.
+//  Created by Kenneth Pham on 1/14/25.
 //
 
-// handles form validation, networking for signing user in, updating login view, no account, wrong password
-
-import Foundation
-import FirebaseAuth
-import FirebaseFirestore
+import SwiftUI
+import UIKit
+import Firebase
 import FirebaseStorage
 
-// form validation protocol
-protocol AuthenticationFormProtocol {
-    var formIsValid: Bool { get }
+// this is for image orientation, mainly to fix bounding box issues with uploading directly from camera
+extension UIImage {
+    func resized(to targetSize: CGSize) -> UIImage {
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1  // maintain scale
+        let renderer = UIGraphicsImageRenderer(size: targetSize, format: format)
+
+        return renderer.image { _ in
+            self.draw(in: CGRect(origin: .zero, size: targetSize))
+        }
+    }
+    
+    func fixedOrientation() -> UIImage {
+        guard imageOrientation != .up else { return self }
+
+        UIGraphicsBeginImageContextWithOptions(size, false, scale)
+        draw(in: CGRect(origin: .zero, size: size))
+        let normalizedImage = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
+
+        return normalizedImage ?? self
+    }
 }
 
-@MainActor
-class AuthViewModel: ObservableObject {
-    @Published var userSession: FirebaseAuth.User?
+class ViewModel: ObservableObject {
+    @Published var image: UIImage?
+    @Published var showPicker = false
+    @Published var source: Picker.Source = .camera
+    @Published var showCameraAlert = false
+    @Published var cameraError: Picker.CameraErrorType?
+    @Published var isEditing = false
+    @Published var selectedImage: MyImage?
+    @Published var myImages: [MyImage] = []
+    @Published var showFileAlert = false
+    @Published var appError: MyImageError.ErrorType?
+    @Published var imageChanged = false
     @Published var currentUser: User?
-    @Published var syncing: Bool? {
-        didSet {
-            if !syncing! {
-                if logOutAfterSync {
-                    signOut()
-                    logOutAfterSync = false
-                }
-            }
-        }
-    }
-    @Published var logOutAfterSync = false {
-        didSet {
-            if let syncing = syncing {
-                if !syncing {
-                    signOut()
-                    logOutAfterSync = false
-                }
-            }
-        }
-    }
-    @Published var cloudEnabledStatus = false {
-        didSet {
-            if !cloudEnabledStatus && userSession != nil {
-                logOutAfterSync = true
-            }
-        }
-    }
+    @Published var syncing = false
     
     init() {
-        // ensures that user stays logged in unless they signed out
-        cloudStatus()
-        self.userSession = Auth.auth().currentUser
+        print(FileManager.docDirURL.path)
+    }
+    
+    private var imagesHash = Set<String>()
+    
+    var deleteButtonIsHidden: Bool {
+        isEditing || selectedImage == nil
+    }
+    
+    var pathsUpdated = false {
+        didSet {
+            if pathsUpdated {
+                Task {
+                    defer { pathsUpdated = false }
+                    await updatePaths()
+                }
+            }
+        }
+    }
+    
+    func setUser(_ user: User?) {
+        if user != nil {
+            self.currentUser = user
+            self.syncing = true
+            print("\(self.syncing)")
+            Task {
+                await updateLocalAndCloud()
+            }
+        }
+        else {
+            self.currentUser = nil
+        }
+    }
+    
+    func showPhotoPicker() {
+        do {
+            if source == .camera {
+                try Picker.checkPermissions()
+            }
+            showPicker = true
+        } catch {
+            showCameraAlert = true
+            cameraError = Picker.CameraErrorType(error: error as! Picker.PickerError)
+        }
+    }
+    
+    func reset() {
+        image = nil
+        isEditing = false
+        selectedImage = nil
+    }
+    
+    func display(_ myImage: MyImage) {
+        image = myImage.image
+        selectedImage = myImage
+    }
+    
+    
+    func deleteSelected() {
+        if let index = myImages.firstIndex(where: {$0.id == selectedImage!.id}) {
+            if self.currentUser != nil {
+                if let path = self.currentUser!.imagePaths["\(myImages[index].id)"] {
+                    self.currentUser!.imagePaths.removeValue(forKey: "\(myImages[index].id)")
+                    self.pathsUpdated = true
+                    self.syncing = true
+                    Task {
+                        await deleteImageFromCloud(path)
+                        await MainActor.run {
+                            self.syncing = false
+                        }
+                    }
+                }
+            }
+            self.imagesHash.remove("\(myImages[index].id)")
+            myImages.remove(at: index)
+            saveMyImagesJSONFile()
+            reset()
+        }
+    }
+    
+    func addMyImage(image: UIImage) {
+        reset()
+        var myImage = MyImage(date: Date())
+        let objectRecognizer = ObjectRecognizer()
+
+        let fixedImage = image.fixedOrientation() // normalize orientation
+        let resizedImage = fixedImage.resized(to: CGSize(width: 640, height: 640)) // resize for model, necessary for camera images
+
+        // run object recognition
+        objectRecognizer.recognize(fromImage: resizedImage) { recognizedObjects in
+            var finalImage = resizedImage
+
+            if !recognizedObjects.isEmpty {
+                // print("Detected \(recognizedObjects.count) objects, drawing bounding boxes.")
+
+                let imageSize = resizedImage.size
+                UIGraphicsBeginImageContextWithOptions(imageSize, false, 0)
+                resizedImage.draw(at: .zero)
+
+                for detection in recognizedObjects {
+                    let boundingBox = detection.bounds
+                    let x = boundingBox.minX * imageSize.width
+                    let y = (1.0 - boundingBox.maxY) * imageSize.height
+                    let width = boundingBox.width * imageSize.width
+                    let height = boundingBox.height * imageSize.height
+                    let rectangle = CGRect(x: x, y: y, width: width, height: height)
+
+                    // draw bounding box
+                    UIColor.green.setStroke()
+                    let path = UIBezierPath(rect: rectangle)
+                    path.lineWidth = 3
+                    path.stroke()
+
+                    // draw label
+                    let text = "\(detection.label) (\(String(format: "%.2f", detection.confidence * 100))%)"
+                    let attributes: [NSAttributedString.Key: Any] = [
+                        .font: UIFont.boldSystemFont(ofSize: 14),
+                        .foregroundColor: UIColor.white,
+                        .backgroundColor: UIColor.black
+                    ]
+                    let textSize = text.size(withAttributes: attributes)
+                    let textRect = CGRect(x: max(0, min(x, imageSize.width - textSize.width)),
+                                          y: max(0, y - textSize.height - 2),
+                                          width: textSize.width,
+                                          height: textSize.height)
+                    text.draw(in: textRect, withAttributes: attributes)
+                    
+                    // update class counts in myImage
+                    if detection.label == "Ripe" {
+                        myImage.ripe += 1
+                    } else if detection.label == "Nearly Ripe" {
+                        myImage.nearlyRipe += 1
+                    } else if detection.label == "Unripe" {
+                        myImage.unripe += 1
+                    }
+                }
+
+                finalImage = UIGraphicsGetImageFromCurrentImageContext() ?? resizedImage
+                UIGraphicsEndImageContext()
+            } else {
+                print("No objects detected, saving original image.")
+            }
+
+            // save image to JSON
+            do {
+                try FileManager().saveImage("\(myImage.id)", image: finalImage)
+                self.myImages.append(myImage)
+                self.imagesHash.insert("\(myImage.id)")
+                self.saveMyImagesJSONFile()
+                if self.currentUser != nil {
+                    self.syncing = true
+                    self.uploadPhoto(myImage) {
+                        DispatchQueue.main.async {
+                            self.syncing = false
+                            //print("\nSync: \(self.syncing)")
+                        }
+                    }
+                }
+            } catch {
+                self.showFileAlert = true
+                self.appError = MyImageError.ErrorType(error: error as! MyImageError)
+            }
+        }
         
-        Task {
-            await fetchUser()
+        if self.imageChanged {
+            self.imageChanged = false
         }
+        display(myImage)
     }
-    
-    func signIn(withEmail email: String, password: String) async throws {
+
+    func addCloudImage(myImage: MyImage, image: UIImage) {
         do {
-            let result = try await Auth.auth().signIn(withEmail: email, password: password)
-            self.userSession = result.user
-            // remember to fetch user information otherwise app restart is required
-            await fetchUser()
+            try FileManager().saveImage("\(myImage.id)", image: image)
+            self.myImages.append(myImage)
+            self.imagesHash.insert("\(myImage.id)")
+            self.saveMyImagesJSONFile()
         } catch {
-            print("DEBUG: Failed to log in with error \(error.localizedDescription)")
+            self.showFileAlert = true
+            self.appError = MyImageError.ErrorType(error: error as! MyImageError)
         }
     }
     
-    func createUser(withEmail email: String, password: String, fullname: String) async throws {
+    func saveMyImagesJSONFile() {
+        let encoder = JSONEncoder()
         do {
-            let result = try await Auth.auth().createUser(withEmail: email, password: password)
-            self.userSession = result.user
-            let user = User(id: result.user.uid, fullname: fullname, email: email, imagePaths: [String: String]())
-            let encodedUser = try Firestore.Encoder().encode(user)
-            try await Firestore.firestore().collection("users").document(user.id).setData(encodedUser)
-            // fetch data from Firebase so that it can be displayed on screen
-            await fetchUser()
+            let data = try encoder.encode(myImages)
+            let jsonString = String(decoding: data, as: UTF8.self)
+            reset()
+            do {
+                try FileManager().saveDocument(contents: jsonString)
+            } catch {
+                showFileAlert = true
+                appError = MyImageError.ErrorType(error: error as! MyImageError)
+            }
         } catch {
-            print("DEBUG: Failed to create user with error \(error.localizedDescription)")
+            showFileAlert = true
+            appError = MyImageError.ErrorType(error: .encodingError)
         }
     }
     
-    func signOut() {
+    func loadMyImagesJSONFile() {
         do {
-            try Auth.auth().signOut() // signs out user on backend
-            self.userSession = nil // wipes out user session and takes us back to login screen
-            self.currentUser = nil // wipe out current user object b/c we don't want to hold on to user data when logging out
+            let data = try FileManager().readDocument()
+            let decoder = JSONDecoder()
+            do {
+                myImages = try decoder.decode([MyImage].self, from: data)
+                for image in myImages {
+                    // add image IDs to hash for fast lookup
+                    imagesHash.insert("\(image.id)")
+                }
+            } catch {
+                showFileAlert = true
+                appError = MyImageError.ErrorType(error: .decodingError)
+            }
         } catch {
-            print("DEBUG: Failed to sign out with error \(error.localizedDescription)")
+            showFileAlert = true
+            appError = MyImageError.ErrorType(error: error as! MyImageError)
         }
     }
     
-    func deleteAccount() async {
-        let user = Auth.auth().currentUser
+    // need to make it escaping to change self.syncDone = false
+    // make it optional because self.syncDone = false does not have to be set for some functions
+    func uploadPhoto(_ image: MyImage, completion: (() -> Void)? = nil) {
+        // create storage reference
+        let storage = Storage.storage().reference()
         
-        user?.delete { error in
+        // turn image into data
+        let imageData = image.image.jpegData(compressionQuality: 0.8)
+        
+        guard imageData != nil else {
+            return
+        }
+        
+        //get user id
+        guard let userID = currentUser?.id else {
+            return
+        }
+        
+        //specify the file path and name
+        let fileRef = storage.child("\(userID)/images/\(image.id).jpg")
+        
+        let metadata = StorageMetadata()
+        metadata.contentType = "image/jpeg"
+        metadata.customMetadata = [
+            "uploadDate": "\(image.date)",
+            "ripe": String(image.ripe),
+            "nearlyRipe": String(image.nearlyRipe),
+            "unripe": String(image.unripe)
+        ]
+
+        
+        let _ = fileRef.putData(imageData!, metadata: metadata) { (metadata, error) in
+            // check for errors
+            if error == nil && metadata != nil {
+                self.currentUser!.imagePaths["\(image.id)"] = "\(userID)/images/\(image.id).jpg"
+                self.pathsUpdated = true
+                // print(self.currentUser!.imagePaths)
+            }
+            // .putData is asynchronous so use completion function to signify uploadPhoto is done and to execute its completion
+            completion?()
+        }
+    }
+    
+    func updatePaths() async {
+        let db = Firestore.firestore().collection("users").document(currentUser!.id)
+        do {
+          try await db.updateData([
+            "imagePaths": currentUser!.imagePaths
+          ])
+            print("imagePaths successfully updated!")
+        } catch {
+            print("Error updating imagePaths: \(error)")
+        }
+    }
+    
+    func deleteImageFromCloud(_ path: String) async {
+        // Create a reference to the file to delete
+        let imageRef = Storage.storage().reference().child(path)
+
+        do {
+            // delete the file
+            try await imageRef.delete()
+            print("Image was successfully deleted from the cloud.")
+        } catch {
+            // error
+            print("There was an error when attempting the image from the cloud.")
+            return
+        }
+    }
+    
+    func updateLocalAndCloud() async {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss Z"
+        // Retrieving images stored on cloud
+        for (id, path) in currentUser!.imagePaths {
+            if imagesHash.contains(id) {
+//                print("Hashset: \(imagesHash), images: \(myImages)\n")
+                continue
+            }
+            // no need for Task, function is async
+            if let metadata = await getMetaData(path) {
+//                print("Metadata retrieved for image: \(metadata.customMetadata)\n")
+                retrievePhoto(path) { image in
+                    if let img = image {
+//                        print("photo retrieved, UPDATE HERE: \(id)")
+                        if let date = formatter.date(from: metadata.customMetadata!["uploadDate"]!) {
+                            let myImage = MyImage(id: UUID(uuidString: id)!, date: date, ripe: Int(metadata.customMetadata!["ripe"]!)!, unripe: Int(metadata.customMetadata!["unripe"]!)!, nearlyRipe: Int(metadata.customMetadata!["nearlyRipe"]!)!)
+                            self.addCloudImage(myImage: myImage, image: img)
+//                            print("date converted\n")
+                        } else {
+                            print("date conversion in update failed\n")
+                        }
+                    }
+                    else {
+                        print("Could not get photo for image id: \(id)")
+                    }
+                }
+            } else {
+                print("Metadata retrieval failed for image at path: \(path)")
+            }
+        }
+        
+        // Store local images on cloud
+        var count = 0
+        var total = 0
+        for myImage in myImages {
+            if currentUser!.imagePaths["\(myImage.id)"] == nil {
+                total += 1
+                // print("Uploading image \(myImage.id)...\n")
+                uploadPhoto(myImage) {
+                    // forces UI updates to run on main thread
+                    Task { @MainActor in
+                        count += 1
+                        if count == total {
+                            self.syncing = false
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // imageRef is async since uses getData, but it seems that FireBase has not yet used Swift's new async feature
+    func retrievePhoto(_ path: String, completion: @escaping (UIImage?) -> Void) {
+        // Create a reference to the file you want to download
+        let imageRef = Storage.storage().reference().child(path)
+
+        // Download in memory with a maximum allowed size of 10MB (10 * 1024 * 1024 bytes)
+        imageRef.getData(maxSize: 10 * 1024 * 1024) { data, error in
           if let error = error {
-              print("DEBUG: Failed to delete user. Error: \(error)")
-              return
+              print("An error occured when retrieving image from cloud: \(error)\n")
+              completion(nil)
           } else {
-              // set session variables to nil
-              print("User successfully deleted.")
-              self.userSession = nil
-              self.currentUser = nil
+              // Data for "images/island.jpg" is returned
+              completion(UIImage(data: data!))
           }
         }
     }
     
-    private func fetchUser() async {
-        guard let uid = Auth.auth().currentUser?.uid else { return }
-        guard let snapshot = try? await Firestore.firestore().collection("users").document(uid).getDocument() else { return }
-        self.currentUser = try? snapshot.data(as: User.self)
-        imagePathSync()
-    }
-    
-    private func cloudStatus() {
-        let cloudControlCollection = Firestore.firestore().collection("cloud_control")
+    func getMetaData(_ path: String) async -> StorageMetadata? {
+        let imageRef = Storage.storage().reference().child(path)
         
-        cloudControlCollection.document("on_off").addSnapshotListener { documentSnapshot, error in
-            if let error = error {
-                print("Error retrieving cloud status. Error: \(error)\n")
-                return
-            }
-            
-            guard let document = documentSnapshot else {
-              print("Error fetching document: \(error!)")
-              return
-            }
-            guard let data = document.data() else {
-                print("Document data was empty.")
-                return
-            }
-            
-            self.cloudEnabledStatus = data["enabled"] as! Bool
-            print("Cloud Status: \(self.cloudEnabledStatus)")
-        }
-    }
-    
-    private func imagePathSync() {
-        let userControlCollection = Firestore.firestore().collection("users")
-        
-        if let userID = currentUser?.id {
-            userControlCollection.document(userID).addSnapshotListener { documentSnapshot, error in
-                if let error = error {
-                    print("Error retrieving user data snapshot. Error: \(error)\n")
-                    return
-                }
-                
-                guard let snapshot = documentSnapshot else {
-                  print("Error fetching user document for syncing: \(error!)")
-                  return
-                }
-                
-                do {
-                    self.currentUser = try snapshot.data(as: User.self)
-                } catch {
-                    print("Error retrieving user.\n")
-                }
-                
-                print("User Sync Status: \(self.cloudEnabledStatus)")
-            }
+        do {
+            return try await imageRef.getMetadata()
+        } catch {
+            print("Error getting image metadata.\n")
+            return nil
         }
     }
 }
