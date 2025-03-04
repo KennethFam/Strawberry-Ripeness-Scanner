@@ -101,6 +101,11 @@ class AuthViewModel: ObservableObject {
         let cloudControlCollection = Firestore.firestore().collection("cloud_control")
         
         cloudControlCollection.document("on_off").addSnapshotListener { documentSnapshot, error in
+            if let error = error {
+                print("Error retrieving cloud status. Error: \(error)\n")
+                return
+            }
+            
             guard let document = documentSnapshot else {
               print("Error fetching document: \(error!)")
               return
@@ -120,6 +125,11 @@ class AuthViewModel: ObservableObject {
         
         if let userID = currentUser?.id {
             userControlCollection.document(userID).addSnapshotListener { documentSnapshot, error in
+                if let error = error {
+                    print("Error retrieving user data snapshot. Error: \(error)\n")
+                    return
+                }
+                
                 guard let snapshot = documentSnapshot else {
                   print("Error fetching user document for syncing: \(error!)")
                   return
