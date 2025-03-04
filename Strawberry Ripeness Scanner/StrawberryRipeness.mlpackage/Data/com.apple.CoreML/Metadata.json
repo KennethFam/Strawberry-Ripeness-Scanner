@@ -1,0 +1,18 @@
+{
+  "MLModelVersionStringKey" : "8.3.61",
+  "MLModelDescriptionKey" : "Ultralytics best model trained on \/content\/drive\/My Drive\/strawberry\/dataset1plus2plus3b\/data.yaml",
+  "MLModelCreatorDefinedKey" : {
+    "IoU threshold" : "0.45",
+    "stride" : "32",
+    "Confidence threshold" : "0.25",
+    "docs" : "https:\/\/docs.ultralytics.com",
+    "task" : "detect",
+    "imgsz" : "[640, 640]",
+    "date" : "2025-01-14T18:40:54.787168",
+    "args" : "{'batch': 1, 'half': False, 'int8': False, 'nms': True}",
+    "batch" : "1",
+    "names" : "{0: 'Nearly Ripe', 1: 'Ripe', 2: 'Unripe'}"
+  },
+  "MLModelAuthorKey" : "Ultralytics",
+  "MLModelLicenseKey" : "AGPL-3.0 License (https:\/\/ultralytics.com\/license)"
+}
