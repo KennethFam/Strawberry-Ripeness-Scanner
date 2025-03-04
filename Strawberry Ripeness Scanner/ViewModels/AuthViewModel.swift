@@ -25,6 +25,7 @@ class AuthViewModel: ObservableObject {
         didSet {
             if !syncing! && logOutAfterSync {
                 signOut()
+                logOutAfterSync = false
             }
         }
     }
@@ -33,6 +34,7 @@ class AuthViewModel: ObservableObject {
             if let syncing = syncing {
                 if !syncing {
                     signOut()
+                    logOutAfterSync = false
                 }
             }
         }
