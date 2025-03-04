@@ -34,7 +34,6 @@ extension UIImage {
     }
 }
 
-
 class ViewModel: ObservableObject {
     @Published var image: UIImage?
     @Published var showPicker = false
@@ -74,11 +73,13 @@ class ViewModel: ObservableObject {
     func setUser(_ user: User?) {
         if user != nil {
             self.currentUser = user
-            self.syncing = false
+            self.syncing = true
             Task {
                 await updateLocalAndCloud()
                 await MainActor.run {
-                    self.syncing = true
+                    print("\nsyncing before: \(self.syncing)")
+                    self.syncing = false
+                    print("syncing after: \(self.syncing)\n")
                 }
             }
         }
@@ -117,11 +118,11 @@ class ViewModel: ObservableObject {
                 if let path = self.currentUser!.imagePaths["\(myImages[index].id)"] {
                     self.currentUser!.imagePaths.removeValue(forKey: "\(myImages[index].id)")
                     self.pathsUpdated = true
-                    self.syncing = false
+                    self.syncing = true
                     Task {
                         await deleteImageFromCloud(path)
                         await MainActor.run {
-                            self.syncing = true
+                            self.syncing = false
                         }
                     }
                 }
@@ -203,10 +204,11 @@ class ViewModel: ObservableObject {
                 self.imagesHash.insert("\(myImage.id)")
                 self.saveMyImagesJSONFile()
                 if self.currentUser != nil {
-                    self.syncing = false
+                    self.syncing = true
                     self.uploadPhoto(myImage) {
                         DispatchQueue.main.async {
-                            self.syncing = true
+                            self.syncing = false
+                            print("\nSync: \(self.syncing)")
                         }
                     }
                 }
@@ -310,6 +312,8 @@ class ViewModel: ObservableObject {
                 self.pathsUpdated = true
                 print(self.currentUser!.imagePaths)
             }
+            // .putData is asynchronous so use completion function to signify uploadPhoto is done and to execute its completion
+            completion?()
         }
     }
     
