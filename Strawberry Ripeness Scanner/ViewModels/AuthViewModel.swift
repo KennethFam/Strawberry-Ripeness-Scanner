@@ -21,10 +21,26 @@ protocol AuthenticationFormProtocol {
 class AuthViewModel: ObservableObject {
     @Published var userSession: FirebaseAuth.User?
     @Published var currentUser: User?
+    @Published var syncing: Bool? {
+        didSet {
+            if !syncing! && logOutAfterSync {
+                signOut()
+            }
+        }
+    }
+    @Published var logOutAfterSync = false {
+        didSet {
+            if let syncing = syncing {
+                if !syncing {
+                    signOut()
+                }
+            }
+        }
+    }
     @Published var cloudEnabledStatus = false {
         didSet {
             if !cloudEnabledStatus && userSession != nil {
-                signOut()
+                logOutAfterSync = true
             }
         }
     }
@@ -138,8 +154,7 @@ class AuthViewModel: ObservableObject {
                 do {
                     self.currentUser = try snapshot.data(as: User.self)
                 } catch {
-                    self.userSession = nil
-                    self.currentUser = nil
+                    self.logOutAfterSync = true
                 }
                 
                 print("User Sync Status: \(self.cloudEnabledStatus)")
