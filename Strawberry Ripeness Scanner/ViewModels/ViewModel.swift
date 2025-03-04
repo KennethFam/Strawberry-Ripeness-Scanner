@@ -46,11 +46,7 @@ class ViewModel: ObservableObject {
     @Published var showFileAlert = false
     @Published var appError: MyImageError.ErrorType?
     @Published var imageChanged = false
-    @Published var currentUser: User? {
-        willSet {
-            
-        }
-    }
+    @Published var currentUser: User?
     @Published var syncing = false
     
     init() {
