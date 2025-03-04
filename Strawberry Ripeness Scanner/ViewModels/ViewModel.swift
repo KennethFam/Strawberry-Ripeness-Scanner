@@ -74,13 +74,9 @@ class ViewModel: ObservableObject {
         if user != nil {
             self.currentUser = user
             self.syncing = true
+            print("\(self.syncing)")
             Task {
                 await updateLocalAndCloud()
-                await MainActor.run {
-                    print("\nsyncing before: \(self.syncing)")
-                    self.syncing = false
-                    print("syncing after: \(self.syncing)\n")
-                }
             }
         }
         else {
@@ -147,7 +143,7 @@ class ViewModel: ObservableObject {
             var finalImage = resizedImage
 
             if !recognizedObjects.isEmpty {
-                print("Detected \(recognizedObjects.count) objects, drawing bounding boxes.")
+                // print("Detected \(recognizedObjects.count) objects, drawing bounding boxes.")
 
                 let imageSize = resizedImage.size
                 UIGraphicsBeginImageContextWithOptions(imageSize, false, 0)
@@ -208,7 +204,7 @@ class ViewModel: ObservableObject {
                     self.uploadPhoto(myImage) {
                         DispatchQueue.main.async {
                             self.syncing = false
-                            print("\nSync: \(self.syncing)")
+                            //print("\nSync: \(self.syncing)")
                         }
                     }
                 }
@@ -310,7 +306,7 @@ class ViewModel: ObservableObject {
             if error == nil && metadata != nil {
                 self.currentUser!.imagePaths["\(image.id)"] = "\(userID)/images/\(image.id).jpg"
                 self.pathsUpdated = true
-                print(self.currentUser!.imagePaths)
+                // print(self.currentUser!.imagePaths)
             }
             // .putData is asynchronous so use completion function to signify uploadPhoto is done and to execute its completion
             completion?()
@@ -377,10 +373,21 @@ class ViewModel: ObservableObject {
         }
         
         // Store local images on cloud
+        var count = 0
+        var total = 0
         for myImage in myImages {
             if currentUser!.imagePaths["\(myImage.id)"] == nil {
-                print("Uploading image \(myImage.id)...\n")
-                uploadPhoto(myImage)
+                total += 1
+                // print("Uploading image \(myImage.id)...\n")
+                uploadPhoto(myImage) {
+                    // forces UI updates to run on main thread
+                    Task { @MainActor in
+                        count += 1
+                        if count == total {
+                            self.syncing = false
+                        }
+                    }
+                }
             }
         }
     }
