@@ -9,34 +9,42 @@ import SwiftUI
 
 extension ScanView {
     var imageScroll: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
-                ForEach(vm.myImages) { myImage in
-                    VStack {
-                        Image(uiImage: myImage.image)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 100, height: 100)
-                            .clipShape(RoundedRectangle(cornerRadius: 15))
-                            .shadow(color: .black.opacity(0.6), radius: 2, x: 2, y: 2)
-                        Text("Ripe: \(myImage.ripe)")
-                            .font(.system(size: 12))
-                        Text("Nearly Ripe: \(myImage.nearlyRipe)")
-                            .font(.system(size: 12))
-                        Text("Unripe: \(myImage.unripe)")
-                            .font(.system(size: 12))
-                        Text("Date: \(getDate(myImage.date, "MM/dd/yyyy"))")
-                            .font(.system(size: 12))
-                    }
-                    .onTapGesture {
-                        vm.display(myImage)
-                        if vm.imageChanged {
-                            vm.imageChanged = false
+        VStack {
+            HStack {
+                Spacer()
+                Text("Report: \(vm.ripe) Ripe(s), \(vm.nearlyRipe) Nearly Ripe(s), \(vm.unripe) Unripe(s)")
+                    .font(.system(size: 12, weight: .bold))
+                Spacer()
+            }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(vm.displayedImages) { myImage in
+                        VStack {
+                            Image(uiImage: myImage.image)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 100, height: 100)
+                                .clipShape(RoundedRectangle(cornerRadius: 15))
+                                .shadow(color: .black.opacity(0.6), radius: 2, x: 2, y: 2)
+                            Text("Ripe: \(myImage.ripe)")
+                                .font(.system(size: 12))
+                            Text("Nearly Ripe: \(myImage.nearlyRipe)")
+                                .font(.system(size: 12))
+                            Text("Unripe: \(myImage.unripe)")
+                                .font(.system(size: 12))
+                            Text("Date: \(getDate(myImage.date, "MM/dd/yyyy"))")
+                                .font(.system(size: 12))
+                        }
+                        .onTapGesture {
+                            vm.display(myImage)
+                            if vm.imageChanged {
+                                vm.imageChanged = false
+                            }
                         }
                     }
                 }
-            }
-        }.padding(.horizontal)
+            }.padding(.horizontal)
+        }
     }
     
     func getDate(_ date: Date, _ format: String) -> String {
@@ -73,7 +81,6 @@ extension ScanView {
                         vm.addMyImage(image: vm.image!)
                     } else {
                         vm.reset()
-                        nameField = false
                     }
                 } label: {
                     // describe what the save/update button should do based on whether image is nil
