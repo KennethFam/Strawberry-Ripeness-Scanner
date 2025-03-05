@@ -64,7 +64,6 @@ struct ScanView: View {
                         .offset(x: -2)
                         .overlay{
                             DatePicker("Select Date", selection: $vm.date,displayedComponents: [.date])
-                                .datePickerStyle(CompactDatePickerStyle())
                                 .blendMode(.destinationOver)
                             
                         }
@@ -76,7 +75,6 @@ struct ScanView: View {
                         .offset(x: -2)
                         .overlay{
                             DatePicker("", selection: $vm.endDate, in: vm.date..., displayedComponents: [.date])
-                                .datePickerStyle(CompactDatePickerStyle())
                                 .blendMode(.destinationOver)
                             
                         }
