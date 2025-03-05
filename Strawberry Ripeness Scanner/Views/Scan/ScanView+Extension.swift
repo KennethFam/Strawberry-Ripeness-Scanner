@@ -12,8 +12,12 @@ extension ScanView {
         VStack {
             HStack {
                 Spacer()
-                Text("Report: \(vm.ripe) Ripe(s), \(vm.nearlyRipe) Nearly Ripe(s), \(vm.unripe) Unripe(s)")
-                    .font(.system(size: 12, weight: .bold))
+                VStack {
+                    Text("Report (\(vm.reportInterval)):")
+                        .font(.system(size: 14, weight: .bold))
+                    Text("\(vm.ripe) Ripe(s), \(vm.nearlyRipe) Nearly Ripe(s), \(vm.unripe) Unripe(s)")
+                        .font(.system(size: 14, weight: .bold))
+                }
                 Spacer()
             }
             ScrollView(.horizontal, showsIndicators: false) {
