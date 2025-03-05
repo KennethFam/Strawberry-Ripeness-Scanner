@@ -61,6 +61,26 @@ class ViewModel: ObservableObject {
         print(FileManager.docDirURL.path)
     }
     
+    var reportInterval: String {
+        switch interval {
+        case .allTime:
+            return "All Time"
+        case .today:
+            return "Today"
+        case .custom:
+            let startDate = formatter.string(from: self.date)
+            let stopDate = formatter.string(from: self.endDate)
+            let today = formatter.string(from: Date())
+            if startDate == stopDate {
+                if startDate == today {
+                    return "Today"
+                }
+                return startDate
+            }
+            return "\(startDate) to \(stopDate)"
+        }
+    }
+    
     private var imagesHash = Set<String>()
     
     private let calendar = Calendar.current
