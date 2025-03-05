@@ -46,14 +46,30 @@ class ViewModel: ObservableObject {
     @Published var showFileAlert = false
     @Published var appError: MyImageError.ErrorType?
     @Published var imageChanged = false
-    @Published var currentUser: User?
+    @Published var currentUser: User? 
     @Published var syncing = false
+    @Published var displayedImages: [MyImage] = []
+    @Published var interval: ReportInterval
+    @Published var ripe = 0
+    @Published var unripe = 0
+    @Published var nearlyRipe = 0
+    @Published var date = Date()
+    @Published var endDate = Date()
     
     init() {
+        interval = .allTime
         print(FileManager.docDirURL.path)
     }
     
     private var imagesHash = Set<String>()
+    
+    private let calendar = Calendar.current
+    
+    private var formatter: DateFormatter {
+        let temp = DateFormatter()
+        temp.dateFormat = "yyyy/MM/dd"
+        return temp
+    }
     
     var deleteButtonIsHidden: Bool {
         isEditing || selectedImage == nil
@@ -125,6 +141,7 @@ class ViewModel: ObservableObject {
             }
             self.imagesHash.remove("\(myImages[index].id)")
             myImages.remove(at: index)
+            loadImages()
             saveMyImagesJSONFile()
             reset()
         }
@@ -198,6 +215,9 @@ class ViewModel: ObservableObject {
                 try FileManager().saveImage("\(myImage.id)", image: finalImage)
                 self.myImages.append(myImage)
                 self.imagesHash.insert("\(myImage.id)")
+                if self.inRange(myImage) {
+                    self.loadImages()
+                }
                 self.saveMyImagesJSONFile()
                 if self.currentUser != nil {
                     self.syncing = true
@@ -225,6 +245,10 @@ class ViewModel: ObservableObject {
             try FileManager().saveImage("\(myImage.id)", image: image)
             self.myImages.append(myImage)
             self.imagesHash.insert("\(myImage.id)")
+            self.myImages.sort(by: {$0.date < $1.date})
+            if self.inRange(myImage) {
+                self.loadImages()
+            }
             self.saveMyImagesJSONFile()
         } catch {
             self.showFileAlert = true
@@ -256,6 +280,7 @@ class ViewModel: ObservableObject {
             let decoder = JSONDecoder()
             do {
                 myImages = try decoder.decode([MyImage].self, from: data)
+                loadImages()
                 for image in myImages {
                     // add image IDs to hash for fast lookup
                     imagesHash.insert("\(image.id)")
@@ -267,6 +292,58 @@ class ViewModel: ObservableObject {
         } catch {
             showFileAlert = true
             appError = MyImageError.ErrorType(error: error as! MyImageError)
+        }
+    }
+    
+    func inRange(_ image: MyImage) -> Bool {
+        switch interval {
+        case .allTime:
+            return true
+        case .today:
+            displayedImages = []
+            let today = formatter.string(from: Date())
+            return formatter.string(from: image.date) == today
+        case .custom:
+            displayedImages = []
+            var imageDate: String
+            let startDate = formatter.string(from: self.date)
+            let stopDate = formatter.string(from: self.endDate)
+            imageDate = formatter.string(from: image.date)
+            return (startDate <= imageDate) && (imageDate <= stopDate)
+        }
+    }
+    
+    func loadImages() {
+        ripe = 0
+        unripe = 0
+        nearlyRipe = 0
+        switch interval {
+        case .allTime:
+            displayedImages = myImages
+        case .today:
+            displayedImages = []
+            let today = formatter.string(from: Date())
+            for image in myImages {
+                if formatter.string(from: image.date) == today {
+                    displayedImages.append(image)
+                }
+            }
+        case .custom:
+            displayedImages = []
+            var imageDate: String
+            let startDate = formatter.string(from: self.date)
+            let stopDate = formatter.string(from: self.endDate)
+            for image in myImages {
+                imageDate = formatter.string(from: image.date)
+                if (startDate <= imageDate) && (imageDate <= stopDate) {
+                    displayedImages.append(image)
+                }
+            }
+        }
+        for images in displayedImages {
+            ripe += images.ripe
+            unripe += images.unripe
+            nearlyRipe += images.nearlyRipe
         }
     }
     
