@@ -13,72 +13,79 @@ struct ScanView: View {
     var body: some View {
         VStack {
             //Text("Start Date: \(vm.date), End Date: \(vm.endDate)")
-            HStack {
-                Text("My Scans")
-                    .font(.system(size: 34, weight: .bold))
-                    .bold()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.leading, 16)
-                
-                Menu {
-                    Button {
-                        if vm.interval != .allTime {
-                            vm.interval = .allTime
+            Text("My Scans")
+                .font(.system(size: 34, weight: .bold))
+                .bold()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.leading, 16)
+            
+            VStack {
+                HStack {
+                    Spacer()
+                    
+                    Menu {
+                        Button {
+                            if vm.interval != .allTime {
+                                vm.interval = .allTime
+                                vm.loadImages()
+                            }
+                        } label: {
+                            Text("All Time")
+                        }
+                        
+                        Button {
+                            if vm.interval != .today {
+                                vm.interval = .today
+                                vm.loadImages()
+                            }
+                        } label: {
+                            Text("Today")
+                        }
+                        
+                        Button {
+                            vm.interval = .custom
                             vm.loadImages()
+                        } label: {
+                            Text("Custom Range: \(getDate(vm.date, "MM/dd/yyyy")) to \(getDate(vm.endDate, "MM/dd/yyyy"))")
                         }
                     } label: {
-                        Text("All Time")
+                        Text("Generate Report")
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .padding(.trailing, 16)
                     }
-                    
-                    Button {
-                        if vm.interval != .today {
-                            vm.interval = .today
-                            vm.loadImages()
-                        }
-                    } label: {
-                        Text("Today")
-                    }
-                    
-                    Button {
-                        vm.interval = .custom
-                        vm.loadImages()
-                    } label: {
-                        Text("Custom Range: \(getDate(vm.date, "MM/dd/yyyy")) to \(getDate(vm.endDate, "MM/dd/yyyy"))")
-                    }
-                } label: {
-                    Text("Generate Report")
-                    Image(systemName: "arrow.triangle.2.circlepath")
-                        .padding(.trailing, 16)
                 }
-            }
-            HStack {
-                Spacer()
-                Text("Start")
-                    .font(.system(size: 14))
-                Image(systemName: "calendar")
-                    .font(.title3)
-                    .offset(x: -2)
-                    .overlay{
-                        DatePicker("Select Date", selection: $vm.date,displayedComponents: [.date])
-                            .datePickerStyle(CompactDatePickerStyle())
-                            .blendMode(.destinationOver)
-                        
-                    }
                 
-                Text("End")
-                    .font(.system(size: 14))
-                Image(systemName: "calendar")
-                    .font(.title3)
-                    .offset(x: -2)
-                    .overlay{
-                        DatePicker("", selection: $vm.endDate, in: vm.date..., displayedComponents: [.date])
-                            .datePickerStyle(CompactDatePickerStyle())
-                            .blendMode(.destinationOver)
-                        
-                    }
+                HStack {
+                    Spacer()
+                    Text("Start")
+                        .font(.system(size: 14))
+                    Image(systemName: "calendar")
+                        .font(.title3)
+                        .offset(x: -2)
+                        .overlay{
+                            DatePicker("Select Date", selection: $vm.date,displayedComponents: [.date])
+                                .datePickerStyle(CompactDatePickerStyle())
+                                .blendMode(.destinationOver)
+                            
+                        }
+                    
+                    Text("End")
+                        .font(.system(size: 14))
+                    Image(systemName: "calendar")
+                        .font(.title3)
+                        .offset(x: -2)
+                        .overlay{
+                            DatePicker("", selection: $vm.endDate, in: vm.date..., displayedComponents: [.date])
+                                .datePickerStyle(CompactDatePickerStyle())
+                                .blendMode(.destinationOver)
+                            
+                        }
+                }
+                .padding(.trailing, 35)
             }
-            .padding(.trailing, 35)
             .padding(.top, -25)
+            .padding(.bottom, 10)
+            
             
             VStack {
                 if !vm.isEditing {
