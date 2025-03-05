@@ -9,9 +9,77 @@ import SwiftUI
 
 struct ScanView: View {
     @EnvironmentObject var vm: ViewModel
-    @FocusState var nameField: Bool
+    @State private var showDatePicker = false
     var body: some View {
-        NavigationView {
+        VStack {
+            //Text("Start Date: \(vm.date), End Date: \(vm.endDate)")
+            HStack {
+                Text("My Scans")
+                    .font(.system(size: 34, weight: .bold))
+                    .bold()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.leading, 16)
+                
+                Menu {
+                    Button {
+                        if vm.interval != .allTime {
+                            vm.interval = .allTime
+                            vm.loadImages()
+                        }
+                    } label: {
+                        Text("All Time")
+                    }
+                    
+                    Button {
+                        if vm.interval != .today {
+                            vm.interval = .today
+                            vm.loadImages()
+                        }
+                    } label: {
+                        Text("Today")
+                    }
+                    
+                    Button {
+                        vm.interval = .custom
+                        vm.loadImages()
+                    } label: {
+                        Text("Custom Range: \(getDate(vm.date, "MM/dd/yyyy")) to \(getDate(vm.endDate, "MM/dd/yyyy"))")
+                    }
+                } label: {
+                    Text("Generate Report")
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .padding(.trailing, 16)
+                }
+            }
+            HStack {
+                Spacer()
+                Text("Start")
+                    .font(.system(size: 14))
+                Image(systemName: "calendar")
+                    .font(.title3)
+                    .offset(x: -2)
+                    .overlay{
+                        DatePicker("Select Date", selection: $vm.date,displayedComponents: [.date])
+                            .datePickerStyle(CompactDatePickerStyle())
+                            .blendMode(.destinationOver)
+                        
+                    }
+                
+                Text("End")
+                    .font(.system(size: 14))
+                Image(systemName: "calendar")
+                    .font(.title3)
+                    .offset(x: -2)
+                    .overlay{
+                        DatePicker("", selection: $vm.endDate, in: vm.date..., displayedComponents: [.date])
+                            .datePickerStyle(CompactDatePickerStyle())
+                            .blendMode(.destinationOver)
+                        
+                    }
+            }
+            .padding(.trailing, 35)
+            .padding(.top, -25)
+            
             VStack {
                 if !vm.isEditing {
                     imageScroll
@@ -46,19 +114,6 @@ struct ScanView: View {
             }, message: { cameraError in
                 Text(cameraError.message)
             })
-            .navigationTitle("My Scans")
-            .toolbar {
-                ToolbarItemGroup(placement: .keyboard) {
-                    HStack {
-                        Spacer()
-                        Button {
-                            nameField = false
-                        } label : {
-                            Image(systemName: "keyboard.chevron.compact.down")
-                        }
-                    }
-                }
-            }
         }
     }
 }
