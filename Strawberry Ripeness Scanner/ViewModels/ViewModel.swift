@@ -56,6 +56,8 @@ class ViewModel: ObservableObject {
     @Published var date = Date()
     @Published var endDate = Date()
     
+    private let objectRecognizer = ObjectRecognizer()
+    
     init() {
         interval = .allTime
         print(FileManager.docDirURL.path)
@@ -82,8 +84,6 @@ class ViewModel: ObservableObject {
     }
     
     private var imagesHash = Set<String>()
-    
-    private let calendar = Calendar.current
     
     private var formatter: DateFormatter {
         let temp = DateFormatter()
@@ -170,7 +170,6 @@ class ViewModel: ObservableObject {
     func addMyImage(image: UIImage) {
         reset()
         var myImage = MyImage(date: Date())
-        let objectRecognizer = ObjectRecognizer()
 
         let fixedImage = image.fixedOrientation() // normalize orientation
         let resizedImage = fixedImage.resized(to: CGSize(width: 640, height: 640)) // resize for model, necessary for camera images
@@ -193,9 +192,21 @@ class ViewModel: ObservableObject {
                     let width = boundingBox.width * imageSize.width
                     let height = boundingBox.height * imageSize.height
                     let rectangle = CGRect(x: x, y: y, width: width, height: height)
-
+                    var color: UIColor
+                    
                     // draw bounding box
-                    UIColor.green.setStroke()
+                    if detection.label == "Ripe" {
+                        myImage.ripe += 1
+                        color = UIColor.green
+                    } else if detection.label == "Nearly Ripe" {
+                        myImage.nearlyRipe += 1
+                        color = UIColor.yellow
+                    } else {
+                        myImage.unripe += 1
+                        color = UIColor.red
+                    }
+                    color.setStroke()
+                    
                     let path = UIBezierPath(rect: rectangle)
                     path.lineWidth = 3
                     path.stroke()
@@ -204,8 +215,8 @@ class ViewModel: ObservableObject {
                     let text = "\(detection.label) (\(String(format: "%.2f", detection.confidence * 100))%)"
                     let attributes: [NSAttributedString.Key: Any] = [
                         .font: UIFont.boldSystemFont(ofSize: 14),
-                        .foregroundColor: UIColor.white,
-                        .backgroundColor: UIColor.black
+                        .foregroundColor: UIColor.black,
+                        .backgroundColor: color
                     ]
                     let textSize = text.size(withAttributes: attributes)
                     let textRect = CGRect(x: max(0, min(x, imageSize.width - textSize.width)),
@@ -215,13 +226,6 @@ class ViewModel: ObservableObject {
                     text.draw(in: textRect, withAttributes: attributes)
                     
                     // update class counts in myImage
-                    if detection.label == "Ripe" {
-                        myImage.ripe += 1
-                    } else if detection.label == "Nearly Ripe" {
-                        myImage.nearlyRipe += 1
-                    } else if detection.label == "Unripe" {
-                        myImage.unripe += 1
-                    }
                 }
 
                 finalImage = UIGraphicsGetImageFromCurrentImageContext() ?? resizedImage
