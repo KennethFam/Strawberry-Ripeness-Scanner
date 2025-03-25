@@ -10,85 +10,125 @@ import SwiftUI
 struct ProfileView: View {
     @EnvironmentObject var viewModel: AuthViewModel
     @EnvironmentObject var vm: ViewModel
+    @State var loadingText = "Loading..."
+    @State var logOut = false
+    @State var deleteAcc = false
+    @State var showSignOutConfirmation = false
+    @State var showDeleteAccountConfirmation = false
     
     var body: some View {
         if let user = viewModel.currentUser {
-            List {
-                Section {
-                    HStack {
-                        Text(user.initials)
-                            .font(.title)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.white)
-                            .frame(width: 72, height: 72)
-                            .background(Color(.systemGray3))
-                            .clipShape(Circle())
-                        
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(user.fullname)
-                                .font(.subheadline)
+            ZStack {
+                List {
+                    Section {
+                        HStack {
+                            Text(user.initials)
+                                .font(.title)
                                 .fontWeight(.semibold)
-                                .padding(.top, 4)
+                                .foregroundColor(.white)
+                                .frame(width: 72, height: 72)
+                                .background(Color(.systemGray3))
+                                .clipShape(Circle())
                             
-                            Text(user.email)
-                                .font(.footnote)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(user.fullname)
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                    .padding(.top, 4)
+                                
+                                Text(user.email)
+                                    .font(.footnote)
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                    }
+                    
+                    Section("General") {
+                        HStack {
+                            SettingsRowView(imageName: "gear",
+                                            title: "Version",
+                                            tintColor: Color(.systemGray))
+                            
+                            Spacer()
+                            
+                            Text("1.0.0")
+                                .font(.subheadline)
                                 .foregroundColor(.gray)
                         }
                     }
-                }
-                
-                Section("General") {
-                    HStack {
-                        SettingsRowView(imageName: "gear",
-                                        title: "Version",
-                                        tintColor: Color(.systemGray))
+                    
+                    Section {
+                        Button {
+                            showSignOutConfirmation = true
+                        } label: {
+                            HStack {
+                                Spacer()
+                                SettingsRowView(title: "Sign Out",
+                                                tintColor: .red,
+                                                textColor: .red)
+                                Spacer()
+                            }
+                        }
+                        .confirmationDialog("Are you sure you want to sign out?", isPresented: $showSignOutConfirmation, titleVisibility: .visible) {
+                            Button("Confirm", role: .destructive) {
+                                loadingText = "Signing out..."
+                                viewModel.loading = true
+                                if !vm.syncing {
+                                    viewModel.signOut()
+                                } else {
+                                    logOut = true
+                                }
+                            }
+                        }
                         
-                        Spacer()
-                        
-                        Text("1.0.0")
-                            .font(.subheadline)
-                            .foregroundColor(.gray)
                     }
-                }
-                
-                Section {
-                    Button {
-                        viewModel.signOut()
-                    } label: {
-                        HStack {
-                            Spacer()
-                            SettingsRowView(title: "Sign Out",
-                                            tintColor: .red,
-                                            textColor: .red)
-                            Spacer()
+                    
+                    Section {
+                        Button {
+                            showDeleteAccountConfirmation = true
+                        } label: {
+                            HStack {
+                                Spacer()
+                                SettingsRowView(title: "Delete Account",
+                                                tintColor: .red,
+                                                textColor: .red)
+                                Spacer()
+                            }
+                        }
+                        .confirmationDialog("Are you sure you want to delete your account?", isPresented: $showDeleteAccountConfirmation, titleVisibility: .visible) {
+                            Button("Confirm", role: .destructive) {
+                                loadingText = "Deleting Account..."
+                                viewModel.loading = true
+                                if !vm.syncing {
+                                    Task {
+                                        await viewModel.deleteAccount()
+                                    }
+                                } else {
+                                    deleteAcc = true
+                                }
+                            }
                         }
                     }
-                    .onChange(of: vm.syncing) {
-                        print(vm.syncing)
-                    }
-                    .disabled(vm.syncing)
-                    .opacity(!vm.syncing ? 1.0 : 0.5)
-                    
+                    .listSectionSpacing(10)
                 }
                 
-                Section {
-                    Button {
+                if viewModel.loading {
+                    LoadingView(text: loadingText)
+                }
+            }
+            .onChange(of: vm.syncing) {
+                print(vm.syncing)
+                if !vm.syncing {
+                    if logOut {
+                        logOut = false
+                        viewModel.signOut()
+                    } else if deleteAcc {
                         Task {
+                            defer {deleteAcc = false}
                             await viewModel.deleteAccount()
                         }
-                    } label: {
-                        HStack {
-                            Spacer()
-                            SettingsRowView(title: "Delete Account",
-                                            tintColor: .red,
-                                            textColor: .red)
-                            Spacer()
-                        }
                     }
-                    .disabled(vm.syncing)
-                    .opacity(!vm.syncing ? 1.0 : 0.5)
                 }
-                .listSectionSpacing(10)
             }
         }
     }
