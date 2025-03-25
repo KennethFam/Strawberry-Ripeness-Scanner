@@ -21,6 +21,7 @@ protocol AuthenticationFormProtocol {
 class AuthViewModel: ObservableObject {
     @Published var userSession: FirebaseAuth.User?
     @Published var currentUser: User?
+    @Published var loading = false
     @Published var syncing: Bool? {
         didSet {
             if !syncing! {
@@ -31,15 +32,17 @@ class AuthViewModel: ObservableObject {
         }
     }
 
-    @Published var cloudEnabledStatus = false {
+    @Published var cloudEnabledStatus = true {
         didSet {
-            if let syncing = syncing {
-                if !cloudEnabledStatus && !syncing && userSession != nil {
+            if !cloudEnabledStatus {
+                if let syncing = syncing {
+                    if !cloudEnabledStatus && !syncing && userSession != nil {
+                        signOut()
+                    }
+                }
+                else {
                     signOut()
                 }
-            }
-            else {
-                signOut()
             }
         }
     }
@@ -56,6 +59,8 @@ class AuthViewModel: ObservableObject {
     
     func signIn(withEmail email: String, password: String) async throws {
         do {
+            // runs whether function fails or throws error
+            defer { self.loading = false }
             let result = try await Auth.auth().signIn(withEmail: email, password: password)
             self.userSession = result.user
             // remember to fetch user information otherwise app restart is required
@@ -67,6 +72,8 @@ class AuthViewModel: ObservableObject {
     
     func createUser(withEmail email: String, password: String, fullname: String) async throws {
         do {
+            // runs whether function fails or throws error
+            defer { self.loading = false }
             let result = try await Auth.auth().createUser(withEmail: email, password: password)
             self.userSession = result.user
             let user = User(id: result.user.uid, fullname: fullname, email: email, imagePaths: [String: String]())
@@ -81,6 +88,8 @@ class AuthViewModel: ObservableObject {
     
     func signOut() {
         do {
+            // runs whether function fails or throws error
+            defer { self.loading = false }
             try Auth.auth().signOut() // signs out user on backend
             self.userSession = nil // wipes out user session and takes us back to login screen
             self.currentUser = nil // wipe out current user object b/c we don't want to hold on to user data when logging out
@@ -93,15 +102,16 @@ class AuthViewModel: ObservableObject {
         let user = Auth.auth().currentUser
         
         user?.delete { error in
-          if let error = error {
-              print("DEBUG: Failed to delete user. Error: \(error)")
-              return
-          } else {
-              // set session variables to nil
-              print("User successfully deleted.")
-              self.userSession = nil
-              self.currentUser = nil
-          }
+            if let error = error {
+                print("DEBUG: Failed to delete user. Error: \(error)")
+                return
+            } else {
+                // set session variables to nil
+                print("User successfully deleted.")
+                self.userSession = nil
+                self.currentUser = nil
+            }
+            self.loading = false
         }
     }
     
