@@ -47,7 +47,14 @@ class ViewModel: ObservableObject {
     @Published var appError: MyImageError.ErrorType?
     @Published var imageChanged = false
     @Published var currentUser: User? 
-    @Published var syncing = false
+    @Published var syncing = false {
+        didSet {
+            if !syncing && cloudImageAdded {
+                loadImages()
+                cloudImageAdded = false
+            }
+        }
+    }
     @Published var displayedImages: [MyImage] = []
     @Published var interval: ReportInterval
     @Published var ripe = 0
@@ -55,8 +62,19 @@ class ViewModel: ObservableObject {
     @Published var nearlyRipe = 0
     @Published var date = Date()
     @Published var endDate = Date()
+    @Published var loading = false
     
     private let objectRecognizer = ObjectRecognizer()
+    private var cloudImageAdded = false {
+        didSet {
+            if cloudImageAdded {
+                if !syncing {
+                    loadImages()
+                    cloudImageAdded = false
+                }
+            }
+        }
+    }
     
     init() {
         interval = .allTime
@@ -239,9 +257,7 @@ class ViewModel: ObservableObject {
                 try FileManager().saveImage("\(myImage.id)", image: finalImage)
                 self.myImages.append(myImage)
                 self.imagesHash.insert("\(myImage.id)")
-                if self.inRange(myImage) {
-                    self.loadImages()
-                }
+                self.loadImages()
                 self.saveMyImagesJSONFile()
                 if self.currentUser != nil {
                     self.syncing = true
@@ -262,6 +278,7 @@ class ViewModel: ObservableObject {
             self.imageChanged = false
         }
         display(myImage)
+        loading = false
     }
 
     func addCloudImage(myImage: MyImage, image: UIImage) {
@@ -269,10 +286,6 @@ class ViewModel: ObservableObject {
             try FileManager().saveImage("\(myImage.id)", image: image)
             self.myImages.append(myImage)
             self.imagesHash.insert("\(myImage.id)")
-            self.myImages.sort(by: {$0.date < $1.date})
-            if self.inRange(myImage) {
-                self.loadImages()
-            }
             self.saveMyImagesJSONFile()
         } catch {
             self.showFileAlert = true
@@ -319,28 +332,14 @@ class ViewModel: ObservableObject {
         }
     }
     
-    func inRange(_ image: MyImage) -> Bool {
-        switch interval {
-        case .allTime:
-            return true
-        case .today:
-            displayedImages = []
-            let today = formatter.string(from: Date())
-            return formatter.string(from: image.date) == today
-        case .custom:
-            displayedImages = []
-            var imageDate: String
-            let startDate = formatter.string(from: self.date)
-            let stopDate = formatter.string(from: self.endDate)
-            imageDate = formatter.string(from: image.date)
-            return (startDate <= imageDate) && (imageDate <= stopDate)
-        }
-    }
-    
     func loadImages() {
         ripe = 0
         unripe = 0
         nearlyRipe = 0
+        if self.cloudImageAdded {
+            myImages.sort(by: {$0.date < $1.date})
+            print("Images were sorted!\n")
+        }
         switch interval {
         case .allTime:
             displayedImages = myImages
@@ -465,6 +464,9 @@ class ViewModel: ObservableObject {
                         if let date = formatter.date(from: metadata.customMetadata!["uploadDate"]!) {
                             let myImage = MyImage(id: UUID(uuidString: id)!, date: date, ripe: Int(metadata.customMetadata!["ripe"]!)!, unripe: Int(metadata.customMetadata!["unripe"]!)!, nearlyRipe: Int(metadata.customMetadata!["nearlyRipe"]!)!)
                             self.addCloudImage(myImage: myImage, image: img)
+                            if !self.cloudImageAdded {
+                                self.cloudImageAdded = true
+                            }
 //                            print("date converted\n")
                         } else {
                             print("date conversion in update failed\n")
