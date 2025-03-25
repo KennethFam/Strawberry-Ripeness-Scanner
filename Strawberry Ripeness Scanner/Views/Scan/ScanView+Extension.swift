@@ -82,6 +82,7 @@ extension ScanView {
             HStack {
                 Button {
                     if vm.selectedImage == nil || vm.imageChanged {
+                        vm.loading = true
                         vm.addMyImage(image: vm.image!)
                     } else {
                         vm.reset()
