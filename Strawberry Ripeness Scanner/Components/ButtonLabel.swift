@@ -8,22 +8,23 @@
 import SwiftUI
 
 struct ButtonLabel: View {
-    let symbolName: String
-    let label: String
+    var symbolName: String?
+    var text: String?
+    var clicked: (() -> Void)
     var body: some View {
-        HStack {
-            Image(systemName: symbolName)
-            Text(label)
+        Button (action: clicked) {
+            if let symbolName = symbolName {
+                Image(systemName: symbolName)
+                    .font(.system(size: 30))
+            }
+            if let text = text {
+                Text(text)
+                    .fontWeight(.bold)
+            }
         }
-        .font(.headline)
-        .padding()
-        .frame(height: 40)
-        .background(Color.blue)
-        .foregroundColor(.white)
-        .cornerRadius(15)
     }
 }
 // used to get preview of button design
 #Preview {
-    ButtonLabel(symbolName: "camera", label: "Camera")
+    ButtonLabel(symbolName: "camera") { print("Clicked!") }
 }
