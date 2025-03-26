@@ -34,8 +34,14 @@ extension UIImage {
     }
 }
 
-class ViewModel: ObservableObject {
-    @Published var image: UIImage?
+class ViewModel: NSObject, ObservableObject {
+    @Published var image: UIImage? {
+        didSet {
+            if image != nil {
+                imageSaved = false
+            }
+        }
+    }
     @Published var showPicker = false
     @Published var source: Picker.Source = .camera
     @Published var showCameraAlert = false
@@ -63,6 +69,7 @@ class ViewModel: ObservableObject {
     @Published var date = Date()
     @Published var endDate = Date()
     @Published var loading = false
+    @Published var imageSaved = false
     
     private let objectRecognizer = ObjectRecognizer()
     private var cloudImageAdded = false {
@@ -76,9 +83,10 @@ class ViewModel: ObservableObject {
         }
     }
     
-    init() {
+    override init() {
         interval = .allTime
         print(FileManager.docDirURL.path)
+        super.init()
     }
     
     var reportInterval: String {
@@ -154,6 +162,7 @@ class ViewModel: ObservableObject {
         image = nil
         isEditing = false
         selectedImage = nil
+        imageChanged = false
     }
     
     func display(_ myImage: MyImage) {
@@ -190,18 +199,17 @@ class ViewModel: ObservableObject {
         var myImage = MyImage(date: Date())
 
         let fixedImage = image.fixedOrientation() // normalize orientation
-        let resizedImage = fixedImage.resized(to: CGSize(width: 640, height: 640)) // resize for model, necessary for camera images
 
         // run object recognition
-        objectRecognizer.recognize(fromImage: resizedImage) { recognizedObjects in
-            var finalImage = resizedImage
+        objectRecognizer.recognize(fromImage: fixedImage) { recognizedObjects in
+            var finalImage = fixedImage
 
             if !recognizedObjects.isEmpty {
                 // print("Detected \(recognizedObjects.count) objects, drawing bounding boxes.")
 
-                let imageSize = resizedImage.size
+                let imageSize = fixedImage.size
                 UIGraphicsBeginImageContextWithOptions(imageSize, false, 0)
-                resizedImage.draw(at: .zero)
+                fixedImage.draw(at: .zero)
 
                 for detection in recognizedObjects {
                     let boundingBox = detection.bounds
@@ -246,7 +254,7 @@ class ViewModel: ObservableObject {
                     // update class counts in myImage
                 }
 
-                finalImage = UIGraphicsGetImageFromCurrentImageContext() ?? resizedImage
+                finalImage = UIGraphicsGetImageFromCurrentImageContext() ?? fixedImage
                 UIGraphicsEndImageContext()
             } else {
                 print("No objects detected, saving original image.")
@@ -532,5 +540,14 @@ class ViewModel: ObservableObject {
             print("Error getting image metadata.\n")
             return nil
         }
+    }
+    
+    func writeToPhotoAlbum(image: UIImage) {
+        UIImageWriteToSavedPhotosAlbum(image, self, #selector(saveCompleted), nil)
+    }
+    
+    @objc func saveCompleted(_ image: UIImage, didFinishSavingWithError error: Error?, contextInfo: UnsafeRawPointer) {
+        imageSaved = true
+        print("here")
     }
 }
