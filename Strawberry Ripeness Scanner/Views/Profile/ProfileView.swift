@@ -70,7 +70,7 @@ struct ProfileView: View {
                             }
                         }
                         .confirmationDialog("Are you sure you want to sign out?", isPresented: $showSignOutConfirmation, titleVisibility: .visible) {
-                            Button("Confirm", role: .destructive) {
+                            Button("Sign Out", role: .destructive) {
                                 loadingText = "Signing out..."
                                 viewModel.loading = true
                                 if !vm.syncing {
@@ -96,7 +96,7 @@ struct ProfileView: View {
                             }
                         }
                         .confirmationDialog("Are you sure you want to delete your account?", isPresented: $showDeleteAccountConfirmation, titleVisibility: .visible) {
-                            Button("Confirm", role: .destructive) {
+                            Button("Delete Account", role: .destructive) {
                                 loadingText = "Deleting Account..."
                                 viewModel.loading = true
                                 if !vm.syncing {
