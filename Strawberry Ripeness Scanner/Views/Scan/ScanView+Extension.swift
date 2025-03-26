@@ -80,23 +80,31 @@ extension ScanView {
     var editGroup: some View {
         Group {
             HStack {
-                Button {
-                    if vm.selectedImage == nil || vm.imageChanged {
-                        vm.loading = true
-                        vm.addMyImage(image: vm.image!)
+                if vm.image != nil {
+                    if vm.imageSaved {
+                        Image(systemName: "photo.badge.checkmark")
+                            .resizable()
+                            .foregroundColor(.green)
+                            .frame(width: 30, height: 30)
                     } else {
-                        vm.reset()
+                        ButtonLabel(symbolName: "square.and.arrow.down.fill") {
+                            vm.writeToPhotoAlbum(image: vm.image!)
+                        }
                     }
-                } label: {
-                    // describe what the save/update button should do based on whether image is nil
-                    ButtonLabel(symbolName: vm.selectedImage == nil || vm.imageChanged ? "square.and.arrow.down.fill" : "xmark.circle",
-                                label: vm.selectedImage == nil || vm.imageChanged ? "Scan" : "Close")
                 }
                 if !vm.deleteButtonIsHidden && !vm.imageChanged {
-                    Button {
-                        vm.deleteSelected()
-                    } label: {
-                        ButtonLabel(symbolName: "trash", label: "Delete")
+                    ButtonLabel(symbolName: "trash") {
+                        showDeleteImageConfirmation = true
+                    }
+                    .confirmationDialog("Are you sure you want to delete this image?", isPresented: $showDeleteImageConfirmation, titleVisibility: .visible) {
+                        Button("Delete Image", role: .destructive) {
+                            vm.deleteSelected()
+                        }
+                    }
+                }
+                if vm.selectedImage != nil || vm.imageChanged {
+                    ButtonLabel(symbolName: "xmark.circle") {
+                        vm.reset()
                     }
                 }
             }
@@ -105,12 +113,9 @@ extension ScanView {
     
     var pickerButtons: some View {
         HStack {
-            Button {
+            ButtonLabel(symbolName: "camera") {
                 vm.source = .camera
                 vm.showPhotoPicker()
-            } label: {
-                // set button to style we made in ButtonLabel
-                ButtonLabel(symbolName: "camera", label: "Camera")
             }
             .alert("Error", isPresented: $vm.showCameraAlert, presenting: vm.cameraError, actions:
                     { cameraError in
@@ -118,12 +123,9 @@ extension ScanView {
             }, message: { cameraError in
                 Text(cameraError.message)
             })
-            Button {
+            ButtonLabel(symbolName: "photo") {
                 vm.source = .library
                 vm.showPhotoPicker()
-            } label: {
-                // set button to style we made in ButtonLabel
-                ButtonLabel(symbolName: "photo", label: "Photos")
             }
         }
     }
