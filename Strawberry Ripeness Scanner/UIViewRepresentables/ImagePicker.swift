@@ -38,7 +38,7 @@ struct ImagePicker: UIViewControllerRepresentable {
         
         func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
             if let image = info[UIImagePickerController.InfoKey.originalImage] as? UIImage {
-                parent.selectedImage = image
+                parent.selectedImage = image.resized(to: CGSize(width: 640, height: 640))
                 // call the callback function only if image is not nil, e.g. user selected an image
                 parent.onImagePicked?(image)
             }
