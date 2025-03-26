@@ -11,6 +11,7 @@ struct ScanView: View {
     @EnvironmentObject var vm: ViewModel
     @State private var showDatePicker = false
     @State private var rotation: Double = 0
+    @State var showDeleteImageConfirmation = false
     var body: some View {
         ZStack {
             VStack {
@@ -59,7 +60,7 @@ struct ScanView: View {
                                     Text("Synced")
                                         .font(.system(size: 14))
                                         .foregroundColor(.green)
-                                    Image(systemName: "checkmark.circle")
+                                    Image(systemName: "checkmark.icloud")
                                         .foregroundColor(.green)
                                 }
                             }
@@ -135,15 +136,29 @@ struct ScanView: View {
                         imageScroll
                     }
                     selectedImage
-                    VStack {
-                        if vm.image != nil {
-                            editGroup
-                        }
+                    HStack {
                         if !vm.isEditing {
                             pickerButtons
+                                .padding(.horizontal)
+                        }
+                        Spacer()
+                        if vm.imageChanged {
+                            ButtonLabel(text: "Scan") {
+                                vm.loading = true
+                                vm.addMyImage(image: vm.image!)
+                            }
+                            .frame(width: 50, height: 50)
+                            .foregroundColor(Color.white)
+                            .background(Color.red)
+                            .clipShape(Circle())
+                        }
+                        Spacer()
+                        if vm.image != nil {
+                            editGroup
+                                .padding(.horizontal)
                         }
                     }
-                    .padding()
+                    .padding(.top, -5)
                     Spacer()
                 }
                 .task {
