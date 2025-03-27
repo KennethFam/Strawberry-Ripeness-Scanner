@@ -12,6 +12,7 @@ struct User: Identifiable, Codable, Equatable {
     let fullname: String
     let email: String
     var imagePaths: [String: String]
+    var deletedImages = [String: String]()
     
     var initials: String {
         let formatter = PersonNameComponentsFormatter()
