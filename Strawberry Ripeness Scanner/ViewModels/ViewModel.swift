@@ -55,9 +55,15 @@ class ViewModel: NSObject, ObservableObject {
     @Published var currentUser: User? 
     @Published var syncing = false {
         didSet {
-            if !syncing && cloudImageAdded {
-                loadImages()
-                cloudImageAdded = false
+            if !syncing {
+                if deleteImages {
+                    deleteImages = false
+                    deleteAllImages()
+                }
+                if cloudImageAdded {
+                    loadImages()
+                    cloudImageAdded = false
+                }
             }
         }
     }
@@ -70,6 +76,35 @@ class ViewModel: NSObject, ObservableObject {
     @Published var endDate = Date()
     @Published var loading = false
     @Published var imageSaved = false
+    @Published var cloudSyncing = false
+    @Published var deletionsInProgress = false
+    @Published var deleteImages = false {
+        didSet {
+            if deleteImages {
+                if !syncing {
+                    deleteImages = false
+                    deleteAllImages()
+                }
+            }
+        }
+    }
+    @Published var reversedOrder = false {
+        didSet {
+            loadImages()
+        }
+    }
+    
+    private var totalToDelete = 0 {
+        didSet {
+            if deletionsInProgress {
+                print("Total to Delete: \(totalToDelete)")
+                if totalToDelete == 0 {
+                    deletionsInProgress = false
+                    loading = false
+                }
+            }
+        }
+    }
     
     private let objectRecognizer = ObjectRecognizer()
     private var cloudImageAdded = false {
@@ -96,9 +131,9 @@ class ViewModel: NSObject, ObservableObject {
         case .today:
             return "Today"
         case .custom:
-            let startDate = formatter.string(from: self.date)
-            let stopDate = formatter.string(from: self.endDate)
-            let today = formatter.string(from: Date())
+            let startDate = displayFormatter.string(from: self.date)
+            let stopDate = displayFormatter.string(from: self.endDate)
+            let today = displayFormatter.string(from: Date())
             if startDate == stopDate {
                 if startDate == today {
                     return "Today"
@@ -114,6 +149,12 @@ class ViewModel: NSObject, ObservableObject {
     private var formatter: DateFormatter {
         let temp = DateFormatter()
         temp.dateFormat = "yyyy/MM/dd"
+        return temp
+    }
+    
+    private var displayFormatter: DateFormatter {
+        let temp = DateFormatter()
+        temp.dateFormat = "MM/dd/yyyy"
         return temp
     }
     
@@ -136,7 +177,7 @@ class ViewModel: NSObject, ObservableObject {
         if user != nil {
             self.currentUser = user
             self.syncing = true
-            print("\(self.syncing)")
+            print("New user data/new user set! Sycing local and cloud!")
             Task {
                 await updateLocalAndCloud()
             }
@@ -171,17 +212,28 @@ class ViewModel: NSObject, ObservableObject {
     }
     
     
-    func deleteSelected() {
-        if let index = myImages.firstIndex(where: {$0.id == selectedImage!.id}) {
+    func deleteImage(_ image: MyImage) {
+        if let index = myImages.firstIndex(where: {$0.id == image.id}) {
+            if selectedImage != nil && selectedImage!.id == image.id {
+                reset()
+            }
             if self.currentUser != nil {
                 if let path = self.currentUser!.imagePaths["\(myImages[index].id)"] {
                     self.currentUser!.imagePaths.removeValue(forKey: "\(myImages[index].id)")
+                    self.currentUser!.deletedImages["\(myImages[index].id)"] = "\(Date())"
                     self.pathsUpdated = true
                     self.syncing = true
                     Task {
                         await deleteImageFromCloud(path)
                         await MainActor.run {
-                            self.syncing = false
+                            if self.deletionsInProgress {
+                                self.totalToDelete -= 1
+                                print("Total to delete in MainActor: \(totalToDelete)")
+                            }
+                            if !self.cloudSyncing {
+                                self.syncing = false
+                                print("syncing set to false in deleteImage")
+                            }
                         }
                     }
                 }
@@ -190,7 +242,19 @@ class ViewModel: NSObject, ObservableObject {
             myImages.remove(at: index)
             loadImages()
             saveMyImagesJSONFile()
-            reset()
+        }
+    }
+    
+    func deleteAllImages() {
+        reset()
+        deletionsInProgress = true
+        totalToDelete = myImages.count
+        for image in myImages {
+            deleteImage(image)
+        }
+        if currentUser == nil {
+            deleteImages = false
+            loading = false
         }
     }
     
@@ -306,7 +370,6 @@ class ViewModel: NSObject, ObservableObject {
         do {
             let data = try encoder.encode(myImages)
             let jsonString = String(decoding: data, as: UTF8.self)
-            reset()
             do {
                 try FileManager().saveDocument(contents: jsonString)
             } catch {
@@ -344,10 +407,16 @@ class ViewModel: NSObject, ObservableObject {
         ripe = 0
         unripe = 0
         nearlyRipe = 0
-        if self.cloudImageAdded {
+//        if self.cloudImageAdded {
+//            myImages.sort(by: {$0.date < $1.date})
+//            print("Images were sorted!\n")
+//        }
+        if reversedOrder {
+            myImages.sort(by: {$0.date > $1.date})
+        } else {
             myImages.sort(by: {$0.date < $1.date})
-            print("Images were sorted!\n")
         }
+        
         switch interval {
         case .allTime:
             displayedImages = myImages
@@ -426,7 +495,8 @@ class ViewModel: NSObject, ObservableObject {
             let db = Firestore.firestore().collection("users").document(user.id)
             do {
               try await db.updateData([
-                "imagePaths": currentUser!.imagePaths
+                "imagePaths": currentUser!.imagePaths,
+                "deletedImages": currentUser!.deletedImages
               ])
                 print("imagePaths successfully updated!")
             } catch {
@@ -455,12 +525,33 @@ class ViewModel: NSObject, ObservableObject {
     }
     
     func updateLocalAndCloud() async {
+        // delete images that were deleted on other devices
+        Task { @MainActor in
+            cloudSyncing = true
+        }
+        for image in myImages {
+            if currentUser!.deletedImages["\(image.id)"] != nil {
+                print("Deleting image: \(image.id)")
+                Task { @MainActor in
+                    deleteImage(image)
+                }
+            }
+        }
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd HH:mm:ss Z"
         // Retrieving images stored on cloud
         for (id, path) in currentUser!.imagePaths {
             if imagesHash.contains(id) {
 //                print("Hashset: \(imagesHash), images: \(myImages)\n")
+                continue
+            }
+            if currentUser!.deletedImages["\(id)"] != nil {
+                if currentUser!.imagePaths["\(id)"] != nil {
+                    Task { @MainActor in
+                        currentUser!.imagePaths.removeValue(forKey: "\(id)")
+                        pathsUpdated = true
+                    }
+                }
                 continue
             }
             // no need for Task, function is async
@@ -501,6 +592,7 @@ class ViewModel: NSObject, ObservableObject {
                     Task { @MainActor in
                         count += 1
                         if count == total {
+                            self.cloudSyncing = false
                             self.syncing = false
                         }
                     }
@@ -509,6 +601,7 @@ class ViewModel: NSObject, ObservableObject {
         }
         if total == 0 {
             Task { @MainActor in
+                self.cloudSyncing = false
                 self.syncing = false
             }
         }
@@ -549,5 +642,11 @@ class ViewModel: NSObject, ObservableObject {
     @objc func saveCompleted(_ image: UIImage, didFinishSavingWithError error: Error?, contextInfo: UnsafeRawPointer) {
         imageSaved = true
         print("here")
+    }
+    
+    func saveAllImages() {
+        for imageObj in myImages {
+            writeToPhotoAlbum(image: imageObj.image)
+        }
     }
 }
