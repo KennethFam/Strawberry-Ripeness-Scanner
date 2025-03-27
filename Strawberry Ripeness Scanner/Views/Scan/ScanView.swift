@@ -12,18 +12,29 @@ struct ScanView: View {
     @State private var showDatePicker = false
     @State private var rotation: Double = 0
     @State var showDeleteImageConfirmation = false
+    @State var showDeleteAllImagesConfirmation = false
+    @State var loadingText = "Loading..."
+    @State var startDate = Date()
+    @State var endDate = Date()
     var body: some View {
         ZStack {
             VStack {
                 //Text("Start Date: \(vm.date), End Date: \(vm.endDate)")
-                Text("My Scans")
-                    .font(.system(size: 34, weight: .bold))
-                    .bold()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.leading, 16)
+                HStack {
+                    Text("My Scans")
+                        .font(.system(size: 34, weight: .bold))
+                        .bold()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.leading, 16)
+                    Spacer()
+                    
+                    menuEditGroup
+                        .disabled(!enableMassEditGroup)
+                        .opacity(!enableMassEditGroup ? 1.0 : 0.5)
+                        .padding(.trailing, 16)
+                }
                 
                 VStack {
-                    
                     HStack {
                         HStack(spacing: 0) {
                             if vm.currentUser != nil {
@@ -66,6 +77,10 @@ struct ScanView: View {
                             }
                             
                         }
+                        Spacer()
+                    }
+                    
+                    HStack {
                         
                         Spacer()
                         
@@ -90,9 +105,11 @@ struct ScanView: View {
                             
                             Button {
                                 vm.interval = .custom
+                                vm.date = startDate
+                                vm.endDate = endDate
                                 vm.loadImages()
                             } label: {
-                                Text("Custom Range: \(getDate(vm.date, "MM/dd/yyyy")) to \(getDate(vm.endDate, "MM/dd/yyyy"))")
+                                Text(getDate(startDate, "MM/dd/yyyy") == getDate(endDate, "MM/dd/yyyy") ? "Custom: \(getDate(startDate, "MM/dd/yyyy"))" : "Custom: \(getDate(startDate, "MM/dd/yyyy")) to \(getDate(startDate, "MM/dd/yyyy"))")
                             }
                         } label: {
                             Text("Generate Report")
@@ -109,7 +126,7 @@ struct ScanView: View {
                             .font(.title3)
                             .offset(x: -2)
                             .overlay{
-                                DatePicker("Select Date", selection: $vm.date,displayedComponents: [.date])
+                                DatePicker("Select Date", selection: $startDate,displayedComponents: [.date])
                                     .blendMode(.destinationOver)
                                 
                             }
@@ -120,7 +137,7 @@ struct ScanView: View {
                             .font(.title3)
                             .offset(x: -2)
                             .overlay{
-                                DatePicker("", selection: $vm.endDate, in: vm.date..., displayedComponents: [.date])
+                                DatePicker("", selection: $endDate, in: startDate..., displayedComponents: [.date])
                                     .blendMode(.destinationOver)
                                 
                             }
@@ -144,6 +161,7 @@ struct ScanView: View {
                         Spacer()
                         if vm.imageChanged {
                             ButtonLabel(text: "Scan") {
+                                loadingText = "Scanning..."
                                 vm.loading = true
                                 vm.addMyImage(image: vm.image!)
                             }
@@ -181,7 +199,7 @@ struct ScanView: View {
                 })
             }
             if vm.loading {
-                LoadingView(text: "Scanning...")
+                LoadingView(text: loadingText)
             }
         }
     }
