@@ -8,6 +8,10 @@
 import SwiftUI
 
 extension ScanView {
+    var enableMassEditGroup: Bool {
+        vm.myImages.count > 0
+    }
+    
     var imageScroll: some View {
         VStack {
             HStack {
@@ -40,10 +44,10 @@ extension ScanView {
                                 .font(.system(size: 12))
                         }
                         .onTapGesture {
-                            vm.display(myImage)
                             if vm.imageChanged {
                                 vm.imageChanged = false
                             }
+                            vm.display(myImage)
                         }
                     }
                 }
@@ -71,7 +75,7 @@ extension ScanView {
                     .resizable()
                     .scaledToFit()
                     .opacity(0.6)
-                    .frame(minWidth: 0, maxWidth: .infinity)
+                    .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
                     .padding(.horizontal)
             }
         }
@@ -98,7 +102,7 @@ extension ScanView {
                     }
                     .confirmationDialog("Are you sure you want to delete this image?", isPresented: $showDeleteImageConfirmation, titleVisibility: .visible) {
                         Button("Delete Image", role: .destructive) {
-                            vm.deleteSelected()
+                            vm.deleteImage(vm.selectedImage!)
                         }
                     }
                 }
@@ -126,6 +130,38 @@ extension ScanView {
             ButtonLabel(symbolName: "photo") {
                 vm.source = .library
                 vm.showPhotoPicker()
+            }
+        }
+    }
+    
+    var menuEditGroup: some View {
+        Menu {
+            Button {
+                vm.reversedOrder.toggle()
+            } label: {
+                Label("Reverse Order", systemImage: "arrow.left.arrow.right")
+            }
+            
+            Button {
+                vm.saveAllImages()
+            } label: {
+                Label("Save All Images", systemImage: "square.and.arrow.down")
+            }
+            
+            Button {
+                showDeleteAllImagesConfirmation = true
+            } label: {
+                Label("Delete All Images", systemImage: "trash")
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .font(.system(size: 25))
+        }
+        .confirmationDialog("Are you sure you want to delete all of your images?", isPresented: $showDeleteAllImagesConfirmation, titleVisibility: .visible) {
+            Button("Delete Images", role: .destructive) {
+                loadingText = "Deleting images..."
+                vm.loading = true
+                vm.deleteImages = true
             }
         }
     }
