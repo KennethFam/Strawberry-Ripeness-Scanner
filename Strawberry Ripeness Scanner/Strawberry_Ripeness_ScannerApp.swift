@@ -22,12 +22,14 @@ struct Strawberry_Ripeness_ScannerApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     // StateObject is the same as State but for objects
     // creates instance of view model
+    @StateObject var fbvm = FeedbackViewModel()
     @StateObject var vm = ViewModel()
     @StateObject var viewModel = AuthViewModel()
     
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(fbvm)
                 .environmentObject(vm)
                 // by making it an environment object, we won't need to redeclare it on every view to for login/registration functions
                 .environmentObject(viewModel)
