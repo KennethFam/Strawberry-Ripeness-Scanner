@@ -111,7 +111,7 @@ struct ScanView: View {
                                     vm.endDate = endDate
                                     vm.loadImages()
                                 } label: {
-                                    Text(getDate(startDate, "MM/dd/yyyy") == getDate(endDate, "MM/dd/yyyy") ? "Custom: \(getDate(startDate, "MM/dd/yyyy"))" : "Custom: \(getDate(startDate, "MM/dd/yyyy")) to \(getDate(startDate, "MM/dd/yyyy"))")
+                                    Text(getDate(startDate, "MM/dd/yyyy") == getDate(endDate, "MM/dd/yyyy") ? "Custom: \(getDate(startDate, "MM/dd/yyyy"))" : "Custom: \(getDate(startDate, "MM/dd/yyyy")) to \(getDate(endDate, "MM/dd/yyyy"))")
                                 }
                             } label: {
                                 Text("Generate Report")
