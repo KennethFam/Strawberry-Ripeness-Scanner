@@ -466,7 +466,7 @@ class ViewModel: NSObject, ObservableObject {
         }
         
         //specify the file path and name
-        let fileRef = storage.child("\(userID)/images/\(image.id).jpg")
+        let fileRef = storage.child("users/\(userID)/scans/\(image.id).jpg")
         
         let metadata = StorageMetadata()
         metadata.contentType = "image/jpeg"
@@ -481,7 +481,7 @@ class ViewModel: NSObject, ObservableObject {
         let _ = fileRef.putData(imageData!, metadata: metadata) { (metadata, error) in
             // check for errors
             if error == nil && metadata != nil {
-                self.currentUser?.imagePaths["\(image.id)"] = "\(userID)/images/\(image.id).jpg"
+                self.currentUser?.imagePaths["\(image.id)"] = "users/\(userID)/scans/\(image.id).jpg"
                 self.pathsUpdated = true
                 // print(self.currentUser!.imagePaths)
             }
