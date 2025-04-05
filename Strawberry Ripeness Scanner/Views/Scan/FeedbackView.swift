@@ -11,6 +11,7 @@ import UIKit
 struct FeedbackView: View {
     @EnvironmentObject var vm: ViewModel
     @EnvironmentObject var fbvm: FeedbackViewModel
+    @EnvironmentObject var viewModel: AuthViewModel
     @State var noImageAlert = false
     @State var feedback = ""
     
@@ -34,6 +35,11 @@ struct FeedbackView: View {
                     TextField("Enter your feedback here...", text: $feedback, axis: .vertical)
                         .textFieldStyle(.roundedBorder)
                         .padding(.horizontal)
+                    if viewModel.cloudEnabledStatus == false {
+                        Text("Server is currently down for maintenance.")
+                            .foregroundColor(Color(.systemRed))
+                            .font(.subheadline)
+                    }
                     Button {
                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                         fbvm.uploadFeedback(myImage, feedback: feedback, email: vm.currentUser?.email ?? "", userID: vm.currentUser?.id ?? "", completion: {
@@ -51,8 +57,8 @@ struct FeedbackView: View {
                         .foregroundColor(Color(.white))
                         .cornerRadius(15)
                     }
-                    .disabled(submitDisabled)
-                    .opacity(!submitDisabled ? 1.0 : 0.5)
+                    .disabled(!submitEnabled)
+                    .opacity(submitEnabled ? 1.0 : 0.5)
                 }
                 Spacer()
             }
@@ -76,8 +82,8 @@ struct FeedbackView: View {
 }
 
 extension FeedbackView {
-    var submitDisabled: Bool {
-        feedback.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    var submitEnabled: Bool {
+        return !feedback.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && viewModel.cloudEnabledStatus
     }
 }
 
@@ -85,4 +91,5 @@ extension FeedbackView {
     FeedbackView()
         .environmentObject(ViewModel())
         .environmentObject(FeedbackViewModel())
+        .environmentObject(AuthViewModel())
 }
