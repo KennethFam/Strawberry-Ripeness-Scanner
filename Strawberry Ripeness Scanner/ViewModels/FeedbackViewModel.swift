@@ -19,6 +19,7 @@ class FeedbackViewModel: ObservableObject {
     
     func uploadFeedback(_ image: MyImage, feedback: String, email: String, userID: String, completion: (() -> Void)? = nil) {
         let feedbackID = UUID()
+        let feedbackDate = Date()
         loading = true
         // create storage reference
         let storage = Storage.storage().reference()
@@ -39,7 +40,13 @@ class FeedbackViewModel: ObservableObject {
             "User ID": userID,
             "Email": email,
             "Image ID": "\(image.id)",
-            "feedback": feedback
+            "Feedback": feedback.trimmingCharacters(in: .whitespacesAndNewlines),
+            "Feedback Date": "\(feedbackDate)",
+            "App Version": AppData.version,
+            "Upload Date": "\(image.date)",
+            "Ripe": String(image.ripe),
+            "Nearly Ripe": String(image.nearlyRipe),
+            "Unripe": String(image.unripe)
         ]
 
         
