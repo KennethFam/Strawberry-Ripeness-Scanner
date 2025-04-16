@@ -12,6 +12,7 @@ struct FeedbackView: View {
     @EnvironmentObject var vm: ViewModel
     @EnvironmentObject var fbvm: FeedbackViewModel
     @EnvironmentObject var viewModel: AuthViewModel
+    @Binding var path: [ScanPath]
     @State var noImageAlert = false
     @State var feedback = ""
     
@@ -33,6 +34,7 @@ struct FeedbackView: View {
                             .frame(minWidth: 0, maxWidth: .infinity)
                     }
                     TextField("Enter your feedback here...", text: $feedback, axis: .vertical)
+                        .lineLimit(5...)
                         .textFieldStyle(.roundedBorder)
                         .padding(.horizontal)
                     if viewModel.cloudEnabledStatus == false {
@@ -43,7 +45,7 @@ struct FeedbackView: View {
                     Button {
                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                         fbvm.uploadFeedback(myImage, feedback: feedback, email: vm.currentUser?.email ?? "", userID: vm.currentUser?.id ?? "", completion: {
-                            fbvm.path.removeLast()
+                            path.removeLast()
                             fbvm.loading = false
                         })
                     } label: {
@@ -66,16 +68,16 @@ struct FeedbackView: View {
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
             }
             .onAppear {
-                print("Navigation Path: \(fbvm.path)")
+                print("Navigation Path: \(path)")
                 if vm.selectedImage == nil {
                     noImageAlert = true
                 }
             }
             .alert("An error occured while loading the image. Please select the image you have feedback on and try again.", isPresented: $noImageAlert) {
-                Button("OK", role: .cancel, action: {fbvm.path.removeLast()})
+                Button("OK", role: .cancel, action: {path.removeLast()})
             }
             if fbvm.loading {
-                LoadingView(text:"Submitting feedback...")
+                LoadingView(text: "Submitting feedback...")
             }
         }
     }
@@ -87,9 +89,4 @@ extension FeedbackView {
     }
 }
 
-#Preview {
-    FeedbackView()
-        .environmentObject(ViewModel())
-        .environmentObject(FeedbackViewModel())
-        .environmentObject(AuthViewModel())
-}
+
