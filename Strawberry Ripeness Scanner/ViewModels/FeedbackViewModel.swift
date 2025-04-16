@@ -8,13 +8,7 @@
 import SwiftUI
 import FirebaseStorage
 
-
-enum ScanPath {
-    case feedback
-}
-
 class FeedbackViewModel: ObservableObject {
-    @Published var path = [ScanPath]()
     @Published var loading = false
     
     func uploadFeedback(_ image: MyImage, feedback: String, email: String, userID: String, completion: (() -> Void)? = nil) {
