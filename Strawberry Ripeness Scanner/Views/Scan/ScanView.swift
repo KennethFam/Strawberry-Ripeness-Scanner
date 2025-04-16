@@ -10,6 +10,7 @@ import SwiftUI
 struct ScanView: View {
     @EnvironmentObject var vm: ViewModel
     @EnvironmentObject var fbvm: FeedbackViewModel
+    @State var path = [ScanPath]()
     @State private var showDatePicker = false
     @State private var rotation: Double = 0
     @State var showDeleteImageConfirmation = false
@@ -17,17 +18,27 @@ struct ScanView: View {
     @State var loadingText = "Loading..."
     @State var startDate = Date()
     @State var endDate = Date()
+    @State var presentSideMenu = false
     var body: some View {
-        NavigationStack(path: $fbvm.path) {
+        NavigationStack(path: $path) {
             ZStack {
                 VStack {
                     //Text("Start Date: \(vm.date), End Date: \(vm.endDate)")
                     HStack {
+                        Button {
+                            presentSideMenu.toggle()
+                        } label: {
+                            Image(systemName: "line.3.horizontal")
+                                .font(.system(size: 34))
+                        }
+                        .padding(.leading, 16)
+                        .foregroundColor(.black)
+                        
                         Text("My Scans")
                             .font(.system(size: 34, weight: .bold))
                             .bold()
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.leading, 16)
+                        
                         Spacer()
                         
                         menuEditGroup
@@ -209,13 +220,20 @@ struct ScanView: View {
                         Text(cameraError.message)
                     })
                 }
+                SideMenu(presentSideMenu: $presentSideMenu, content: AnyView(SideMenuView(path: $path, presentSideMenu: $presentSideMenu)))
                 if vm.loading {
                     LoadingView(text: loadingText)
                 }
             }
             .navigationDestination(for: ScanPath.self) { i in
                 switch i {
-                case .feedback: FeedbackView()
+                case .feedback: FeedbackView(path: $path)
+                case .tutorial:
+                    Text("Placeholder")
+                case .ripenessGuide:
+                    Text("Placeholder")
+                case .support:
+                    Text("Placeholder")
                 }
             }
         }
