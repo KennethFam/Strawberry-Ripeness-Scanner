@@ -23,7 +23,7 @@ struct ContentView: View {
                     .tag(1)
                 
                 Group {
-                    if viewModel.userSession != nil {
+                    if viewModel.currentUser != nil {
                         ProfileView()
                     } else {
                         LoginView()
