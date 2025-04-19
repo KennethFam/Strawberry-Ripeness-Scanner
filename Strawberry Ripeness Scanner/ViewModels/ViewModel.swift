@@ -72,6 +72,7 @@ class ViewModel: NSObject, ObservableObject {
     @Published var ripe = 0
     @Published var unripe = 0
     @Published var nearlyRipe = 0
+    @Published var rotten = 0
     @Published var date = Date()
     @Published var endDate = Date()
     @Published var loading = false
@@ -291,9 +292,13 @@ class ViewModel: NSObject, ObservableObject {
                     } else if detection.label == "Nearly Ripe" {
                         myImage.nearlyRipe += 1
                         color = UIColor.yellow
-                    } else {
+                    } else if detection.label == "Unripe" {
                         myImage.unripe += 1
                         color = UIColor.red
+                    }
+                    else {
+                        myImage.rotten += 1
+                        color = UIColor.black
                     }
                     color.setStroke()
                     
@@ -305,7 +310,7 @@ class ViewModel: NSObject, ObservableObject {
                     let text = "\(detection.label) (\(String(format: "%.2f", detection.confidence * 100))%)"
                     let attributes: [NSAttributedString.Key: Any] = [
                         .font: UIFont.boldSystemFont(ofSize: 14),
-                        .foregroundColor: UIColor.black,
+                        .foregroundColor: detection.label == "Rotten" ? UIColor.white : UIColor.black,
                         .backgroundColor: color
                     ]
                     let textSize = text.size(withAttributes: attributes)
@@ -407,6 +412,7 @@ class ViewModel: NSObject, ObservableObject {
         ripe = 0
         unripe = 0
         nearlyRipe = 0
+        rotten = 0
 //        if self.cloudImageAdded {
 //            myImages.sort(by: {$0.date < $1.date})
 //            print("Images were sorted!\n")
@@ -440,10 +446,11 @@ class ViewModel: NSObject, ObservableObject {
                 }
             }
         }
-        for images in displayedImages {
-            ripe += images.ripe
-            unripe += images.unripe
-            nearlyRipe += images.nearlyRipe
+        for image in displayedImages {
+            ripe += image.ripe
+            unripe += image.unripe
+            nearlyRipe += image.nearlyRipe
+            rotten += image.rotten
         }
     }
     
@@ -474,7 +481,8 @@ class ViewModel: NSObject, ObservableObject {
             "uploadDate": "\(image.date)",
             "ripe": String(image.ripe),
             "nearlyRipe": String(image.nearlyRipe),
-            "unripe": String(image.unripe)
+            "unripe": String(image.unripe),
+            "rotten": String(image.rotten)
         ]
 
         
@@ -561,7 +569,7 @@ class ViewModel: NSObject, ObservableObject {
                     if let img = image {
 //                        print("photo retrieved, UPDATE HERE: \(id)")
                         if let date = formatter.date(from: metadata.customMetadata!["uploadDate"]!) {
-                            let myImage = MyImage(id: UUID(uuidString: id)!, date: date, ripe: Int(metadata.customMetadata!["ripe"]!)!, unripe: Int(metadata.customMetadata!["unripe"]!)!, nearlyRipe: Int(metadata.customMetadata!["nearlyRipe"]!)!)
+                            let myImage = MyImage(id: UUID(uuidString: id)!, date: date, ripe: Int(metadata.customMetadata!["ripe"]!)!, unripe: Int(metadata.customMetadata!["unripe"]!)!, nearlyRipe: Int(metadata.customMetadata!["nearlyRipe"]!)!, rotten: Int(metadata.customMetadata!["rotten"]!)!)
                             self.addCloudImage(myImage: myImage, image: img)
                             if !self.cloudImageAdded {
                                 self.cloudImageAdded = true
