@@ -88,7 +88,7 @@ class ViewModel: NSObject, ObservableObject {
             }
         }
     }
-    @Published var reversedOrder = false {
+    @Published var reversedOrder = true {
         didSet {
             loadImages()
         }
