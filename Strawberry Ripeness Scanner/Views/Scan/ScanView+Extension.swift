@@ -19,7 +19,7 @@ extension ScanView {
                 VStack {
                     Text("Report (\(vm.reportInterval)):")
                         .font(.system(size: 14, weight: .bold))
-                    Text("\(vm.ripe) Ripe(s), \(vm.nearlyRipe) Nearly Ripe(s), \(vm.unripe) Unripe(s)")
+                    Text("\(vm.ripe) Ripe(s), \(vm.nearlyRipe) Nearly Ripe(s), \(vm.unripe) Unripe(s), \(vm.rotten) Rotten(s)")
                         .font(.system(size: 14, weight: .bold))
                 }
                 Spacer()
@@ -34,13 +34,15 @@ extension ScanView {
                                 .frame(width: 100, height: 100)
                                 .clipShape(RoundedRectangle(cornerRadius: 15))
                                 .shadow(color: .black.opacity(0.6), radius: 2, x: 2, y: 2)
+                            Text("Date: \(getDate(myImage.date, "MM/dd/yyyy"))")
+                                .font(.system(size: 12))
                             Text("Ripe: \(myImage.ripe)")
                                 .font(.system(size: 12))
                             Text("Nearly Ripe: \(myImage.nearlyRipe)")
                                 .font(.system(size: 12))
                             Text("Unripe: \(myImage.unripe)")
                                 .font(.system(size: 12))
-                            Text("Date: \(getDate(myImage.date, "MM/dd/yyyy"))")
+                            Text("Rotten: \(myImage.rotten)")
                                 .font(.system(size: 12))
                         }
                         .onTapGesture {
