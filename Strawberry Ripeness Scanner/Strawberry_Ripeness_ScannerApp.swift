@@ -25,10 +25,11 @@ struct Strawberry_Ripeness_ScannerApp: App {
     @StateObject var fbvm = FeedbackViewModel()
     @StateObject var vm = ViewModel()
     @StateObject var viewModel = AuthViewModel()
+    @State var path = [ScanPath]()
     
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ContentView(path: $path)
                 .environmentObject(fbvm)
                 .environmentObject(vm)
                 // by making it an environment object, we won't need to redeclare it on every view to for login/registration functions
