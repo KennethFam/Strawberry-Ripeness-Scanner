@@ -40,7 +40,7 @@ struct FeedbackView: View {
                             .fontWeight(.semibold)
                             .font(.footnote)
                         
-                        TextField("Type your issue here...", text: $feedback, axis: .vertical)
+                        TextField("Type your feedback here...", text: $feedback, axis: .vertical)
                             .padding(10)
                             .frame(maxWidth: UIScreen.main.bounds.width - 32)
                             .lineLimit(5...)
