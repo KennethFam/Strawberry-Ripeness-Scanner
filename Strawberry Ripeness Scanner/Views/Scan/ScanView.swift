@@ -10,7 +10,7 @@ import SwiftUI
 struct ScanView: View {
     @EnvironmentObject var vm: ViewModel
     @EnvironmentObject var fbvm: FeedbackViewModel
-    @State var path = [ScanPath]()
+    @Binding var path: [ScanPath]
     @State private var showDatePicker = false
     @State private var rotation: Double = 0
     @State var showDeleteImageConfirmation = false
@@ -229,18 +229,15 @@ struct ScanView: View {
                 switch i {
                 case .feedback: FeedbackView(path: $path)
                 case .tutorial:
-                    Text("Placeholder")
+                    TutorialView()
                 case .ripenessGuide:
-                    Text("Placeholder")
+                    RipenessGuideView()
                 case .support:
-                    Text("Placeholder")
+                    ContactView(path: $path)
                 }
             }
         }
     }
 }
 
-#Preview {
-    ScanView()
-        .environmentObject(ViewModel())
-}
+
