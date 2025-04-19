@@ -13,6 +13,7 @@ struct MyImage: Identifiable, Codable {
     var ripe = 0
     var unripe = 0
     var nearlyRipe = 0
+    var rotten = 0
     
     var image: UIImage {
         do {
