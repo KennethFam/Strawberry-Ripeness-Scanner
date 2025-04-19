@@ -10,6 +10,7 @@ import SwiftUI
 struct SideMenuView: View {
     @Binding var path: [ScanPath]
     @Binding var presentSideMenu: Bool
+    @State var pressedTab: SideMenuRowType?
     
     var body: some View {
         HStack {
@@ -31,7 +32,7 @@ struct SideMenuView: View {
                     }
                     
                     ForEach(SideMenuRowType.allCases, id: \.self) { row in
-                        RowView(imageName: row.iconName, title: row.title) {
+                        RowView(tab: row,imageName: row.iconName, title: row.title) {
                             path.append(row.pathCase)
                             presentSideMenu.toggle()
                         }
@@ -49,33 +50,44 @@ struct SideMenuView: View {
         .background(.clear)
     }
     
-    func RowView(imageName: String, title: String, hideDivider: Bool = false, action: @escaping (() -> ())) -> some View {
+    func RowView(tab: SideMenuRowType, imageName: String, title: String, hideDivider: Bool = false, action: @escaping (() -> ())) -> some View {
         Button {
             action()
         } label: {
             VStack(alignment: .leading) {
                 HStack(spacing: 20) {
                     Rectangle()
-                        .fill(.white)
+                        .fill(tab == pressedTab ? .green : .white)
                         .frame(width: 5)
                     ZStack {
                         Image(systemName: imageName)
                             .resizable()
                             .renderingMode(.template)
-                            .foregroundColor(.black)
+                            .foregroundColor(tab == pressedTab ? .white : .black)
                             .frame(width: 26, height: 26)
                     }
                     .frame(width: 30, height: 30)
                     Text(title)
                         .font(.system(size: 14, weight: .regular))
-                        .foregroundColor(.black)
+                        .foregroundColor(tab == pressedTab ? .white : .black)
                     Spacer()
                 }
+                .contentShape(Rectangle()) // makes whole stack tappable, needed when using plain button style
             }
         }
         .frame(height: 50)
         .background(
-            LinearGradient(colors: [.white, .white], startPoint: .leading, endPoint: .trailing)
+            LinearGradient(colors: [tab == pressedTab ? .red : .white], startPoint: .leading, endPoint: .trailing)
+        )
+        .buttonStyle(.plain)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in
+                    pressedTab = tab
+                }
+                .onEnded { _ in
+                    pressedTab = nil
+                }
         )
     }
 }
