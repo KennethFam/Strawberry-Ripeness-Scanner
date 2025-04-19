@@ -11,11 +11,12 @@ struct ContentView: View {
     @State var selectedTab = 1
     @EnvironmentObject var viewModel: AuthViewModel
     @EnvironmentObject var vm: ViewModel
+    @Binding var path: [ScanPath]
     
     var body: some View {
         TabView(selection: $selectedTab) {
             Group {
-                ScanView()
+                ScanView(path: $path)
                     .tabItem {
                         Image(systemName: "plus.circle")
                         Text("Scan")
@@ -61,10 +62,5 @@ struct ContentView: View {
     }
 }
 
-#Preview {
-    ContentView()
-        .environmentObject(ViewModel())
-        .environmentObject(AuthViewModel())
-}
 
 
