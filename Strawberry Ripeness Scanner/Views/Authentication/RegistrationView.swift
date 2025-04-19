@@ -200,7 +200,7 @@ extension RegistrationView: AuthenticationFormProtocol {
         && !password.isEmpty
         && validPass(password)
         && confirmPassword == password
-        && !fullname.isEmpty
+        && !fullname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         && viewModel.cloudEnabledStatus
     }
     
