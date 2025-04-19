@@ -33,10 +33,24 @@ struct FeedbackView: View {
                             .scaledToFit()
                             .frame(minWidth: 0, maxWidth: .infinity)
                     }
-                    TextField("Enter your feedback here...", text: $feedback, axis: .vertical)
-                        .lineLimit(5...)
-                        .textFieldStyle(.roundedBorder)
-                        .padding(.horizontal)
+                    
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Feedback:")
+                            .foregroundColor(Color(.darkGray))
+                            .fontWeight(.semibold)
+                            .font(.footnote)
+                        
+                        TextField("Type your issue here...", text: $feedback, axis: .vertical)
+                            .padding(10)
+                            .frame(maxWidth: UIScreen.main.bounds.width - 32)
+                            .lineLimit(5...)
+                            .font(.system(size: 14))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(Color.black, lineWidth: 1)
+                            )
+                    }
+                    
                     if viewModel.cloudEnabledStatus == false {
                         Text("Server is currently down for maintenance.")
                             .foregroundColor(Color(.systemRed))
