@@ -42,7 +42,8 @@ class FeedbackViewModel: ObservableObject {
             "Upload Date": "\(image.date)",
             "Ripe": String(image.ripe),
             "Nearly Ripe": String(image.nearlyRipe),
-            "Unripe": String(image.unripe)
+            "Unripe": String(image.unripe),
+            "Rottent": String(image.rotten)
         ]
 
         
