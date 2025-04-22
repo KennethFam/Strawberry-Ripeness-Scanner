@@ -307,7 +307,7 @@ class ViewModel: NSObject, ObservableObject {
                     path.stroke()
 
                     // draw label
-                    let text = "\(detection.label) (\(String(format: "%.2f", detection.confidence * 100))%)"
+                    let text = "\(detection.label)"
                     let attributes: [NSAttributedString.Key: Any] = [
                         .font: UIFont.boldSystemFont(ofSize: 14),
                         .foregroundColor: detection.label == "Rotten" ? UIColor.white : UIColor.black,
