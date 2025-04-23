@@ -26,7 +26,7 @@ struct ContentView: View {
                 
                 Group {
                     if nm.connected == false {
-                        Text("No internet connection. Please check your network and try again")
+                        Text("No internet connection. Please check your network and try again.")
                             .font(.system(size: 14))
                             .foregroundColor(.red)
                             
