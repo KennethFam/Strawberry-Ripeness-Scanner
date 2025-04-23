@@ -22,6 +22,7 @@ class AuthViewModel: ObservableObject {
     @Published var userSession: FirebaseAuth.User?
     @Published var currentUser: User?
     @Published var loading = false
+    @Published var deleteAccError = false
     @Published var syncing: Bool? {
         didSet {
             if !syncing! {
@@ -103,6 +104,7 @@ class AuthViewModel: ObservableObject {
         
         user?.delete { error in
             if let error = error {
+                self.deleteAccError = true
                 print("DEBUG: Failed to delete user. Error: \(error)")
                 return
             } else {
