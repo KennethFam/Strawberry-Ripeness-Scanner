@@ -19,13 +19,8 @@ struct FeedbackView: View {
     var body: some View {
         ZStack {
             VStack {
-                HStack {
-                    Text("Feedback")
-                        .font(.system(size: 34, weight: .bold))
-                        .bold()
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.leading, 16)
-                }
+                PageTitle(title: "Feedback")
+                
                 if let myImage = vm.selectedImage {
                     ZoomableScrollView {
                         Image(uiImage: myImage.image)
