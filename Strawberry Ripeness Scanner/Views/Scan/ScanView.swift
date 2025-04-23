@@ -25,6 +25,7 @@ struct ScanView: View {
                 VStack {
                     //Text("Start Date: \(vm.date), End Date: \(vm.endDate)")
                     HStack {
+                        
                         Button {
                             presentSideMenu.toggle()
                         } label: {
@@ -36,8 +37,8 @@ struct ScanView: View {
                         
                         Text("My Scans")
                             .font(.system(size: 34, weight: .bold))
-                            .bold()
                             .frame(maxWidth: .infinity, alignment: .leading)
+                        
                         
                         Spacer()
                         
@@ -227,11 +228,34 @@ struct ScanView: View {
             }
             .navigationDestination(for: ScanPath.self) { i in
                 switch i {
-                case .feedback: FeedbackView(path: $path)
+                case .feedback:
+                    FeedbackView(path: $path)
                 case .tutorial:
-                    TutorialView()
+                    TutorialView(path: $path)
+                        .toolbar {
+                            ToolbarItem(placement: .topBarTrailing) {
+                                if path.count > 1 {
+                                    Button {
+                                        path.removeAll()
+                                    } label: {
+                                        Image(systemName: "house.fill")
+                                    }
+                                }
+                            }
+                        }
                 case .ripenessGuide:
-                    RipenessGuideView()
+                    RipenessGuideView(path: $path)
+                        .toolbar {
+                            ToolbarItem(placement: .topBarTrailing) {
+                                if path.count > 1 {
+                                    Button {
+                                        path.removeAll()
+                                    } label: {
+                                        Image(systemName: "house.fill")
+                                    }
+                                }
+                            }
+                        }
                 case .support:
                     ContactView(path: $path)
                 }
