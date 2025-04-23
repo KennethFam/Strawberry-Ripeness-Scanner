@@ -80,6 +80,15 @@ struct ProfileView: View {
                                 }
                             }
                         }
+                        .alert("An error occured while deleting your account. You will be signed out now. Please log in and try again.", isPresented: $viewModel.deleteAccError) {
+                            Button("OK", role: .cancel, action: {
+                                if !vm.syncing {
+                                    viewModel.signOut()
+                                } else {
+                                    logOut = true
+                                }
+                            })
+                        }
                         
                     }
                     
