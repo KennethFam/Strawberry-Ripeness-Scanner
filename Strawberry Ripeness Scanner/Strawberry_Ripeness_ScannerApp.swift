@@ -23,6 +23,7 @@ struct Strawberry_Ripeness_ScannerApp: App {
     // StateObject is the same as State but for objects
     // creates instance of view model
     @StateObject var fbvm = FeedbackViewModel()
+    @StateObject var nm = NetworkMonitor()
     @StateObject var vm = ViewModel()
     @StateObject var viewModel = AuthViewModel()
     @State var path = [ScanPath]()
@@ -31,6 +32,7 @@ struct Strawberry_Ripeness_ScannerApp: App {
         WindowGroup {
             ContentView(path: $path)
                 .environmentObject(fbvm)
+                .environmentObject(nm)
                 .environmentObject(vm)
                 // by making it an environment object, we won't need to redeclare it on every view to for login/registration functions
                 .environmentObject(viewModel)
