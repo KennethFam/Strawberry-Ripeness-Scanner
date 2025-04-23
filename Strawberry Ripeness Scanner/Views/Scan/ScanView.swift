@@ -10,9 +10,10 @@ import SwiftUI
 struct ScanView: View {
     @EnvironmentObject var vm: ViewModel
     @EnvironmentObject var fbvm: FeedbackViewModel
+    @EnvironmentObject var nm: NetworkMonitor
     @Binding var path: [ScanPath]
     @State private var showDatePicker = false
-    @State private var rotation: Double = 0
+    @State var rotation: Double = 0
     @State var showDeleteImageConfirmation = false
     @State var showDeleteAllImagesConfirmation = false
     @State var loadingText = "Loading..."
@@ -56,37 +57,24 @@ struct ScanView: View {
                                         .padding(.leading, 16)
                                         .font(.system(size: 14))
                                         .padding(.trailing, 0)
-                                    if vm.syncing {
-                                        Text("Syncing ")
+                                    if nm.connected == false {
+                                        Text("No internet connection.")
                                             .font(.system(size: 14))
-                                        
-                                        ZStack {
-                                            Circle()
-                                                .stroke(lineWidth: 4)
-                                                .opacity(0.3)
-                                                .foregroundColor(.gray)
+                                            .foregroundColor(.red)
+                                    }
+                                    else {
+                                        if vm.syncing {
+                                            Text("Syncing ")
+                                                .font(.system(size: 14))
                                             
-                                            Circle()
-                                                .trim(from: 0, to: 0.25)
-                                                .stroke(style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
-                                                .foregroundColor(.black)
-                                                .rotationEffect(.degrees(rotation))
-                                                .animation(.linear(duration: 1).repeatForever(autoreverses: false), value: rotation)
-                                                .onAppear {
-                                                    self.rotation = 360
-                                                }
-                                                .onDisappear {
-                                                    self.rotation = 0
-                                                }
+                                            loadingCircle
+                                        } else {
+                                            Text("Synced")
+                                                .font(.system(size: 14))
+                                                .foregroundColor(.green)
+                                            Image(systemName: "checkmark.icloud")
+                                                .foregroundColor(.green)
                                         }
-                                        .compositingGroup()
-                                        .frame(width: 12)
-                                    } else {
-                                        Text("Synced")
-                                            .font(.system(size: 14))
-                                            .foregroundColor(.green)
-                                        Image(systemName: "checkmark.icloud")
-                                            .foregroundColor(.green)
                                     }
                                 }
                                 
