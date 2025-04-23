@@ -167,4 +167,28 @@ extension ScanView {
             }
         }
     }
+    
+    var loadingCircle: some View {
+        ZStack {
+            Circle()
+                .stroke(lineWidth: 4)
+                .opacity(0.3)
+                .foregroundColor(.gray)
+            
+            Circle()
+                .trim(from: 0, to: 0.25)
+                .stroke(style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
+                .foregroundColor(.black)
+                .rotationEffect(.degrees(rotation))
+                .animation(.linear(duration: 1).repeatForever(autoreverses: false), value: rotation)
+                .onAppear {
+                    self.rotation = 360
+                }
+                .onDisappear {
+                    self.rotation = 0
+                }
+        }
+        .compositingGroup()
+        .frame(width: 12)
+    }
 }
