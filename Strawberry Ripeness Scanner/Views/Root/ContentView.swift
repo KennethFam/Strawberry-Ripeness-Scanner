@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ContentView: View {
     @State var selectedTab = 1
+    @EnvironmentObject var nm: NetworkMonitor
     @EnvironmentObject var viewModel: AuthViewModel
     @EnvironmentObject var vm: ViewModel
     @Binding var path: [ScanPath]
@@ -24,10 +25,18 @@ struct ContentView: View {
                     .tag(1)
                 
                 Group {
-                    if viewModel.currentUser != nil {
-                        ProfileView()
-                    } else {
-                        LoginView()
+                    if nm.connected == false {
+                        Text("No internet connection. Please check your network and try again")
+                            .font(.system(size: 14))
+                            .foregroundColor(.red)
+                            
+                    }
+                    else {
+                        if viewModel.currentUser != nil {
+                            ProfileView()
+                        } else {
+                            LoginView()
+                        }
                     }
                 }
                     .tabItem {
