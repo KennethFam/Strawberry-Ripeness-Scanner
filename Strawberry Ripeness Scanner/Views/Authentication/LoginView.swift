@@ -108,6 +108,19 @@ struct LoginView: View {
                         .font(.system(size: 14))
                     }
                     
+                    // Forgot Password Button
+                    NavigationLink {
+                        ForgotPassword()
+                            .navigationBarBackButtonHidden(true)
+                    } label: {
+                        HStack(spacing: 3) {
+                            Text("Forgot your password?")
+                            Text("Reset It")
+                                .fontWeight(.bold)
+                        }
+                        .font(.system(size: 14))
+                    }
+                    
                     Spacer()
                 }
                 if viewModel.loading {
@@ -138,4 +151,5 @@ extension LoginView: AuthenticationFormProtocol {
 #Preview {
     LoginView()
         .environmentObject(ViewModel())
+        .environmentObject(AuthViewModel())
 }
