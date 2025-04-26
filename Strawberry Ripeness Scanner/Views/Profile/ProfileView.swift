@@ -80,13 +80,9 @@ struct ProfileView: View {
                                 }
                             }
                         }
-                        .alert("An error occured while deleting your account. You will be signed out now. Please log in and try again.", isPresented: $viewModel.deleteAccError) {
+                        .alert("An error occured while signing out. Please try again.", isPresented: $viewModel.signOutError) {
                             Button("OK", role: .cancel, action: {
-                                if !vm.syncing {
-                                    viewModel.signOut()
-                                } else {
-                                    logOut = true
-                                }
+                                print("Sign out error acknowledged.")
                             })
                         }
                         
@@ -116,6 +112,15 @@ struct ProfileView: View {
                                     deleteAcc = true
                                 }
                             }
+                        }
+                        .alert("An error occured while deleting your account. You will be signed out now. Please log in and try again.", isPresented: $viewModel.deleteAccError) {
+                            Button("OK", role: .cancel, action: {
+                                if !vm.syncing {
+                                    viewModel.signOut()
+                                } else {
+                                    logOut = true
+                                }
+                            })
                         }
                     }
                     .listSectionSpacing(10)
