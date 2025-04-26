@@ -51,7 +51,7 @@ struct FeedbackView: View {
                         }
                         
                         if viewModel.cloudEnabledStatus == false {
-                            Text("Server is currently down for maintenance.")
+                            Text("Server is currently down for maintenance")
                                 .foregroundColor(Color(.systemRed))
                                 .font(.subheadline)
                         }
