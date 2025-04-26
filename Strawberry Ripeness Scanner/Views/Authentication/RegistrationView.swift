@@ -14,6 +14,11 @@ struct RegistrationView: View {
     @State private var confirmPassword = ""
     @State var goodPass = false
     @State var goodEmail = false
+    @State var upper = false
+    @State var special = false
+    @State var digit = false
+    @State var lower = false
+    @State var eight = false
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var viewModel: AuthViewModel
     @EnvironmentObject var vm: ViewModel
@@ -35,12 +40,20 @@ struct RegistrationView: View {
                     .onChange(of: email) {
                         goodEmail = validEmail(email)
                     }
+                    if viewModel.emailInUse == true {
+                        Text("Email already in use")
+                            .foregroundColor(Color(.systemRed))
+                            .font(.subheadline)
+                            .frame(maxWidth: UIScreen.main.bounds.width - 32, alignment: .leading)
+                            .padding(.top, -20)
+                    }
                     if !email.isEmpty && !goodEmail {
                         Text("Invalid Email")
                             .foregroundColor(Color(.systemRed))
                             .font(.subheadline)
                             .frame(maxWidth: UIScreen.main.bounds.width - 32, alignment: .leading)
                             .padding(.top, -20)
+                            .padding(.bottom, -20)
                     }
                     
                     InputView(text: $fullname,
@@ -54,6 +67,11 @@ struct RegistrationView: View {
                                   isSecureField: true)
                         .onChange(of: password) {
                             goodPass = validPass(password)
+                            upper = hasUpper(password)
+                            special = hasSpecial(password)
+                            digit = hasDigit(password)
+                            lower = hasLower(password)
+                            eight = hasEight(password)
                         }
                         
                         if !password.isEmpty && !confirmPassword.isEmpty {
@@ -72,40 +90,16 @@ struct RegistrationView: View {
                     }
                     if !password.isEmpty && !goodPass {
                         Text("Password must contain:")
-                            .foregroundColor(Color(.systemRed))
-                            .font(.subheadline)
-                            .frame(maxWidth: UIScreen.main.bounds.width - 32, alignment: .leading)
-                            .padding(.top, -20)
-                        Text("At least one uppercase letter")
-                            .foregroundColor(Color(.systemRed))
-                            .font(.subheadline)
-                            .frame(maxWidth: UIScreen.main.bounds.width - 32, alignment: .leading)
-                            .padding(.bottom, -20)
-                            .padding(.top, -20)
-                        Text("At least 8 characters")
-                            .foregroundColor(Color(.systemRed))
-                            .font(.subheadline)
-                            .frame(maxWidth: UIScreen.main.bounds.width - 32, alignment: .leading)
-                            .padding(.bottom, -20)
-                            .padding(.top, -20)
-                        Text("At least one lowercase letter")
-                            .foregroundColor(Color(.systemRed))
-                            .font(.subheadline)
-                            .frame(maxWidth: UIScreen.main.bounds.width - 32, alignment: .leading)
-                            .padding(.bottom, -20)
-                            .padding(.top, -20)
-                        Text("At least one number")
-                            .foregroundColor(Color(.systemRed))
-                            .font(.subheadline)
-                            .frame(maxWidth: UIScreen.main.bounds.width - 32, alignment: .leading)
-                            .padding(.bottom, -20)
-                            .padding(.top, -20)
-                        Text("At least one special character: !@#$%^&*")
-                            .foregroundColor(Color(.systemRed))
+                            .foregroundColor(Color(.black))
                             .font(.subheadline)
                             .frame(maxWidth: UIScreen.main.bounds.width - 32, alignment: .leading)
                             .padding(.top, -20)
                         
+                        PassReq(text: "At least one uppercase letter", good: $upper)
+                        PassReq(text: "At least 8 characters", good: $eight)
+                        PassReq(text: "At least one lowercase letter", good: $lower)
+                        PassReq(text: "At least one number", good: $digit)
+                        PassReq(text: "At least one special character: !@#$%^&*", good: $special)
                     }
                     
                     ZStack(alignment: .trailing) {
@@ -137,7 +131,7 @@ struct RegistrationView: View {
                             .padding(.top, -20)
                     }
                     if viewModel.cloudEnabledStatus == false {
-                        Text("Server is currently down for maintenance.")
+                        Text("Server is currently down for maintenance")
                             .foregroundColor(Color(.systemRed))
                             .font(.subheadline)
                             .frame(maxWidth: UIScreen.main.bounds.width - 32, alignment: .leading)
@@ -151,6 +145,7 @@ struct RegistrationView: View {
                 Button {
                     UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                     viewModel.loading = true
+                    viewModel.emailInUse = false
                     Task {
                         try await viewModel.createUser(withEmail: email,
                                                        password: password,
@@ -211,8 +206,38 @@ extension RegistrationView: AuthenticationFormProtocol {
 //        (?=.*[!@#$%^&*])          Ensure string has one special case letter.
 //        (?=.*[0-9])               Ensure string has one digit.
 //        (?=.*[a-z])               Ensure string has one lowercase letter.
-//        .{8,}                      Ensure string is at least of length 8.
+//        .{8,}                     Ensure string is at least of length 8.
 //        $                         End anchor.
+        let passwordPredicate = NSPredicate(format: "SELF MATCHES %@", passwordRegex)
+        return passwordPredicate.evaluate(with: password)
+    }
+    
+    func hasUpper(_ password: String) -> Bool {
+        let passwordRegex  = ".*[A-Z]+.*"
+        let passwordPredicate = NSPredicate(format: "SELF MATCHES %@", passwordRegex)
+        return passwordPredicate.evaluate(with: password)
+    }
+    
+    func hasSpecial(_ password: String) -> Bool {
+        let passwordRegex  = ".*[!@#$%^&*]+.*"
+        let passwordPredicate = NSPredicate(format: "SELF MATCHES %@", passwordRegex)
+        return passwordPredicate.evaluate(with: password)
+    }
+    
+    func hasDigit(_ password: String) -> Bool {
+        let passwordRegex  = ".*[0-9]+.*"
+        let passwordPredicate = NSPredicate(format: "SELF MATCHES %@", passwordRegex)
+        return passwordPredicate.evaluate(with: password)
+    }
+    
+    func hasLower(_ password: String) -> Bool {
+        let passwordRegex  = ".*[a-z]+.*"
+        let passwordPredicate = NSPredicate(format: "SELF MATCHES %@", passwordRegex)
+        return passwordPredicate.evaluate(with: password)
+    }
+    
+    func hasEight(_ password: String) -> Bool {
+        let passwordRegex  = "^.{8,}$"
         let passwordPredicate = NSPredicate(format: "SELF MATCHES %@", passwordRegex)
         return passwordPredicate.evaluate(with: password)
     }
