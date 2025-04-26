@@ -65,6 +65,12 @@ struct ContactView: View {
                                         .stroke(Color.black, lineWidth: 1)
                                 )
                         }
+                        
+                        if fbvm.contactError {
+                            Text("An error occurred. Please try again.")
+                                .foregroundColor(Color(.systemRed))
+                                .font(.subheadline)
+                        }
                         if viewModel.cloudEnabledStatus == false {
                             Text("Server is currently down for maintenance")
                                 .foregroundColor(Color(.systemRed))
@@ -78,9 +84,12 @@ struct ContactView: View {
                     Button {
                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                         fbvm.loading = true
+                        fbvm.contactError = false
                         Task {
                             defer {
-                                path.removeLast()
+                                if fbvm.contactError == false {
+                                    path.removeLast()
+                                }
                                 fbvm.loading = false
                             }
                             try await fbvm.uploadIssue(issue, subject: subject, email: email, userID: viewModel.currentUser?.id ?? "")
