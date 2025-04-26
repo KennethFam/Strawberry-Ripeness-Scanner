@@ -9,6 +9,7 @@ import SwiftUI
 
 struct RegistrationView: View {
     @State private var email = ""
+    @State private var confirmEmail = ""
     @State private var fullname = ""
     @State private var password = ""
     @State private var confirmPassword = ""
@@ -33,12 +34,29 @@ struct RegistrationView: View {
                     .padding(.vertical, 32)
                 
                 VStack(spacing: 24) {
-                    InputView(text: $email,
-                              title: "Email",
-                              placeholder: "name@example.com")
-                    .autocapitalization(.none)
-                    .onChange(of: email) {
-                        goodEmail = validEmail(email)
+                    
+                    ZStack(alignment: .trailing) {
+                        InputView(text: $email,
+                                  title: "Email",
+                                  placeholder: "name@example.com")
+                        .autocapitalization(.none)
+                        .onChange(of: email) {
+                            goodEmail = validEmail(email)
+                        }
+                        
+                        if !email.isEmpty && !confirmEmail.isEmpty {
+                            if email == confirmEmail {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .imageScale(.large)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(Color(.systemGreen))
+                            } else {
+                                Image(systemName: "xmark.circle.fill")
+                                    .imageScale(.large)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(Color(.systemRed))
+                            }
+                        }
                     }
                     if viewModel.emailInUse == true {
                         Text("Email already in use")
@@ -54,6 +72,27 @@ struct RegistrationView: View {
                             .frame(maxWidth: UIScreen.main.bounds.width - 32, alignment: .leading)
                             .padding(.top, -20)
                             .padding(.bottom, -20)
+                    }
+                    
+                    ZStack(alignment: .trailing) {
+                        InputView(text: $confirmEmail,
+                                  title: "Confirm Email",
+                                  placeholder: "Confirm your email")
+                        .autocapitalization(.none)
+                        
+                        if !email.isEmpty && !confirmEmail.isEmpty {
+                            if email == confirmEmail {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .imageScale(.large)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(Color(.systemGreen))
+                            } else {
+                                Image(systemName: "xmark.circle.fill")
+                                    .imageScale(.large)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(Color(.systemRed))
+                            }
+                        }
                     }
                     
                     InputView(text: $fullname,
@@ -195,6 +234,7 @@ extension RegistrationView: AuthenticationFormProtocol {
         && !password.isEmpty
         && validPass(password)
         && confirmPassword == password
+        && confirmEmail == email
         && !fullname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         && viewModel.cloudEnabledStatus
     }
