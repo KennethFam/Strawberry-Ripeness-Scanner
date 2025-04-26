@@ -10,30 +10,6 @@ import UIKit
 import Firebase
 import FirebaseStorage
 
-// this is for image orientation, mainly to fix bounding box issues with uploading directly from camera
-extension UIImage {
-    func resized(to targetSize: CGSize) -> UIImage {
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = 1  // maintain scale
-        let renderer = UIGraphicsImageRenderer(size: targetSize, format: format)
-
-        return renderer.image { _ in
-            self.draw(in: CGRect(origin: .zero, size: targetSize))
-        }
-    }
-    
-    func fixedOrientation() -> UIImage {
-        guard imageOrientation != .up else { return self }
-
-        UIGraphicsBeginImageContextWithOptions(size, false, scale)
-        draw(in: CGRect(origin: .zero, size: size))
-        let normalizedImage = UIGraphicsGetImageFromCurrentImageContext()
-        UIGraphicsEndImageContext()
-
-        return normalizedImage ?? self
-    }
-}
-
 class ViewModel: NSObject, ObservableObject {
     @Published var image: UIImage? {
         didSet {
@@ -79,6 +55,8 @@ class ViewModel: NSObject, ObservableObject {
     @Published var imageSaved = false
     @Published var cloudSyncing = false
     @Published var deletionsInProgress = false
+    @Published var cloudError = false
+    @Published var pathUpdateError = false
     @Published var deleteImages = false {
         didSet {
             if deleteImages {
@@ -177,7 +155,6 @@ class ViewModel: NSObject, ObservableObject {
     func setUser(_ user: User?) {
         if user != nil {
             self.currentUser = user
-            self.syncing = true
             print("New user data/new user set! Sycing local and cloud!")
             Task {
                 await updateLocalAndCloud()
@@ -492,6 +469,8 @@ class ViewModel: NSObject, ObservableObject {
                 self.currentUser?.imagePaths["\(image.id)"] = "users/\(userID)/scans/\(image.id).jpg"
                 self.pathsUpdated = true
                 // print(self.currentUser!.imagePaths)
+            } else {
+                self.cloudError = true
             }
             // .putData is asynchronous so use completion function to signify uploadPhoto is done and to execute its completion
             completion?()
@@ -508,6 +487,7 @@ class ViewModel: NSObject, ObservableObject {
               ])
                 print("imagePaths successfully updated!")
             } catch {
+                self.pathUpdateError = true
                 print("Error updating imagePaths: \(error)")
             }
         }
@@ -527,6 +507,7 @@ class ViewModel: NSObject, ObservableObject {
             print("Image was successfully deleted from the cloud.")
         } catch {
             // error
+            cloudError = true
             print("There was an error when attempting the image from the cloud.")
             return
         }
@@ -535,7 +516,8 @@ class ViewModel: NSObject, ObservableObject {
     func updateLocalAndCloud() async {
         // delete images that were deleted on other devices
         Task { @MainActor in
-            cloudSyncing = true
+            self.syncing = true
+            self.cloudSyncing = true
         }
         for image in myImages {
             if currentUser!.deletedImages["\(image.id)"] != nil {
@@ -623,6 +605,7 @@ class ViewModel: NSObject, ObservableObject {
         // Download in memory with a maximum allowed size of 10MB (10 * 1024 * 1024 bytes)
         imageRef.getData(maxSize: 10 * 1024 * 1024) { data, error in
           if let error = error {
+              self.cloudError = true
               print("An error occured when retrieving image from cloud: \(error)\n")
               completion(nil)
           } else {
@@ -638,6 +621,7 @@ class ViewModel: NSObject, ObservableObject {
         do {
             return try await imageRef.getMetadata()
         } catch {
+            cloudError = true
             print("Error getting image metadata.\n")
             return nil
         }
