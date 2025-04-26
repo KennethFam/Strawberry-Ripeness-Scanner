@@ -47,14 +47,25 @@ struct LoginView: View {
                                   title: "Password",
                                   placeholder: "Enter your password",
                                   isSecureField: true)
-                        if viewModel.cloudEnabledStatus == false {
-                            Text("Server is currently down for maintenance.")
+                        
+                       
+                        if viewModel.loginError == true {
+                            Text("Incorrect email or password")
                                 .foregroundColor(Color(.systemRed))
                                 .font(.subheadline)
                                 .frame(maxWidth: UIScreen.main.bounds.width - 32, alignment: .leading)
                                 .padding(.top, -20)
                                 .padding(.bottom, -20)
                         }
+                        if viewModel.cloudEnabledStatus == false {
+                            Text("Server is currently down for maintenance")
+                                .foregroundColor(Color(.systemRed))
+                                .font(.subheadline)
+                                .frame(maxWidth: UIScreen.main.bounds.width - 32, alignment: .leading)
+                                .padding(.top, -20)
+                                .padding(.bottom, -20)
+                        }
+                        
                     }
                     .padding(.horizontal)
                     .padding(.top, 12)
@@ -63,6 +74,7 @@ struct LoginView: View {
                     Button {
                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                         viewModel.loading = true
+                        viewModel.loginError = false
                         Task {
                             try await viewModel.signIn(withEmail: email,
                                                        password: password)
