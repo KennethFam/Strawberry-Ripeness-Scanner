@@ -23,6 +23,9 @@ class AuthViewModel: ObservableObject {
     @Published var currentUser: User?
     @Published var loading = false
     @Published var deleteAccError = false
+    @Published var loginError = false
+    @Published var emailInUse = false
+    @Published var signOutError = false
     @Published var syncing: Bool? {
         didSet {
             if !syncing! {
@@ -67,6 +70,7 @@ class AuthViewModel: ObservableObject {
             // remember to fetch user information otherwise app restart is required
             await fetchUser()
         } catch {
+            loginError = true
             print("DEBUG: Failed to log in with error \(error.localizedDescription)")
         }
     }
@@ -83,7 +87,15 @@ class AuthViewModel: ObservableObject {
             // fetch data from Firebase so that it can be displayed on screen
             await fetchUser()
         } catch {
-            print("DEBUG: Failed to create user with error \(error.localizedDescription)")
+            if let error = error as NSError? {
+                let code = AuthErrorCode(rawValue: error.code)
+                switch code {
+                case .emailAlreadyInUse:
+                    self.emailInUse = true
+                default:
+                    print("DEBUG: Failed to create user with error \(error.localizedDescription)")
+                }
+            }
         }
     }
     
@@ -95,6 +107,7 @@ class AuthViewModel: ObservableObject {
             self.userSession = nil // wipes out user session and takes us back to login screen
             self.currentUser = nil // wipe out current user object b/c we don't want to hold on to user data when logging out
         } catch {
+            self.signOutError = true
             print("DEBUG: Failed to sign out with error \(error.localizedDescription)")
         }
     }
