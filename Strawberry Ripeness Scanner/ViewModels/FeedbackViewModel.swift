@@ -11,6 +11,8 @@ import FirebaseFirestore
 
 class FeedbackViewModel: ObservableObject {
     @Published var loading = false
+    @Published var feedbackError = false
+    @Published var contactError = false
     
     func uploadFeedback(_ image: MyImage, feedback: String, email: String, userID: String, completion: (() -> Void)? = nil) {
         let feedbackID = UUID()
@@ -51,6 +53,9 @@ class FeedbackViewModel: ObservableObject {
             // check for errors
             if error == nil && metadata != nil {
                 print("Feedback submitted successfully!\n")
+            } else {
+                self.feedbackError = true
+                print("Feedback submission failed!\n")
             }
             // .putData is asynchronous so use completion function to signify uploadPhoto is done and to execute its completion
             completion?()
@@ -74,6 +79,7 @@ class FeedbackViewModel: ObservableObject {
             ])
             print("Document successfully written!")
         } catch {
+            contactError = true
             print("Error writing document: \(error)")
         }
     }
