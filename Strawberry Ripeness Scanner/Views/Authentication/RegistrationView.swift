@@ -99,7 +99,7 @@ struct RegistrationView: View {
                         PassReq(text: "At least 8 characters", good: $eight)
                         PassReq(text: "At least one lowercase letter", good: $lower)
                         PassReq(text: "At least one number", good: $digit)
-                        PassReq(text: "At least one special character: !@#$%^&*", good: $special)
+                        PassReq(text: "At least one special character (not a letter or number)", good: $special)
                     }
                     
                     ZStack(alignment: .trailing) {
@@ -200,10 +200,10 @@ extension RegistrationView: AuthenticationFormProtocol {
     }
     
     func validPass(_ password: String) -> Bool {
-        let passwordRegex  = "^(?=.*[A-Z])(?=.*[!@#$%^&*])(?=.*[0-9])(?=.*[a-z]).{8,}$"
+        let passwordRegex  = "^(?=.*[A-Z])(?=.*[^A-Za-z0-9])(?=.*[0-9])(?=.*[a-z]).{8,}$"
 //        ^                         Start anchor
 //        (?=.*[A-Z])               Ensure string has one uppercase letter.
-//        (?=.*[!@#$%^&*])          Ensure string has one special case letter.
+//        (?=.*[^A-Za-z0-9])        Ensure string has one special case letter.
 //        (?=.*[0-9])               Ensure string has one digit.
 //        (?=.*[a-z])               Ensure string has one lowercase letter.
 //        .{8,}                     Ensure string is at least of length 8.
@@ -219,7 +219,7 @@ extension RegistrationView: AuthenticationFormProtocol {
     }
     
     func hasSpecial(_ password: String) -> Bool {
-        let passwordRegex  = ".*[!@#$%^&*]+.*"
+        let passwordRegex  = ".*[^A-Za-z0-9]+.*"
         let passwordPredicate = NSPredicate(format: "SELF MATCHES %@", passwordRegex)
         return passwordPredicate.evaluate(with: password)
     }
