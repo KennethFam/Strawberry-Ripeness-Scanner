@@ -26,6 +26,7 @@ class AuthViewModel: ObservableObject {
     @Published var loginError = false
     @Published var emailInUse = false
     @Published var signOutError = false
+    @Published var passResetError = false
     @Published var syncing: Bool? {
         didSet {
             if !syncing! {
@@ -50,6 +51,8 @@ class AuthViewModel: ObservableObject {
             }
         }
     }
+    
+    private var userListener: ListenerRegistration?
     
     init() {
         // ensures that user stays logged in unless they signed out
@@ -102,7 +105,13 @@ class AuthViewModel: ObservableObject {
     func signOut() {
         do {
             // runs whether function fails or throws error
-            defer { self.loading = false }
+            if let userListener = userListener {
+                userListener.remove()
+            }
+            defer {
+                self.loading = false
+                self.imagePathSync()
+            }
             try Auth.auth().signOut() // signs out user on backend
             self.userSession = nil // wipes out user session and takes us back to login screen
             self.currentUser = nil // wipe out current user object b/c we don't want to hold on to user data when logging out
@@ -114,6 +123,10 @@ class AuthViewModel: ObservableObject {
     
     func deleteAccount() async {
         let user = Auth.auth().currentUser
+        
+        if let userListener = userListener {
+            userListener.remove()
+        }
         
         user?.delete { error in
             if let error = error {
@@ -127,6 +140,21 @@ class AuthViewModel: ObservableObject {
                 self.currentUser = nil
             }
             self.loading = false
+            self.imagePathSync()
+        }
+    }
+    
+    func forgotPassword(_ email: String, completion: (() -> Void)? = nil) {
+        self.loading = true
+        let auth = Auth.auth()
+        
+        auth.sendPasswordReset(withEmail: email) { (error) in
+            if let error = error {
+                self.passResetError = true
+                print("Send password reset failed. Error: \(error.localizedDescription)")
+            }
+            self.loading = false
+            completion?()
         }
     }
     
@@ -164,7 +192,7 @@ class AuthViewModel: ObservableObject {
         let userControlCollection = Firestore.firestore().collection("users")
         
         if let userID = currentUser?.id {
-            userControlCollection.document(userID).addSnapshotListener { documentSnapshot, error in
+            userListener = userControlCollection.document(userID).addSnapshotListener { documentSnapshot, error in
                 if let error = error {
                     print("Error retrieving user data snapshot. Error: \(error)\n")
                     return
