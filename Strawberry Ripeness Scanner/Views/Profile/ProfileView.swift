@@ -134,8 +134,9 @@ struct ProfileView: View {
                 print(vm.syncing)
                 if !vm.syncing {
                     if logOut {
-                        logOut = false
+                        print("\nSigning out right now!\n")
                         viewModel.signOut()
+                        logOut = false
                     } else if deleteAcc {
                         Task {
                             defer {deleteAcc = false}
