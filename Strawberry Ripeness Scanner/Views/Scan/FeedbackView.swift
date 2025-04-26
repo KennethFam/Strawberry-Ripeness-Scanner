@@ -50,15 +50,24 @@ struct FeedbackView: View {
                                 )
                         }
                         
+                        if fbvm.feedbackError == true {
+                            Text("An error occurred. Please try again.")
+                                .foregroundColor(Color(.systemRed))
+                                .font(.subheadline)
+                        }
                         if viewModel.cloudEnabledStatus == false {
                             Text("Server is currently down for maintenance")
                                 .foregroundColor(Color(.systemRed))
                                 .font(.subheadline)
                         }
+                        
                         Button {
                             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                            fbvm.feedbackError = false
                             fbvm.uploadFeedback(myImage, feedback: feedback, email: vm.currentUser?.email ?? "", userID: vm.currentUser?.id ?? "", completion: {
-                                path.removeLast()
+                                if fbvm.feedbackError == false {
+                                    path.removeLast()
+                                }
                                 fbvm.loading = false
                             })
                         } label: {
