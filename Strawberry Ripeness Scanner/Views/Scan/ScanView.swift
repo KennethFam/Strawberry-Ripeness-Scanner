@@ -63,7 +63,35 @@ struct ScanView: View {
                                             .foregroundColor(.red)
                                     }
                                     else {
-                                        if vm.syncing {
+                                        if vm.cloudError || vm.pathUpdateError {
+                                            Button {
+                                                vm.cloudError = false
+                                                vm.pathUpdateError = false
+                                                if vm.cloudError && vm.pathUpdateError {
+                                                    Task {
+                                                        await vm.updateLocalAndCloud()
+                                                        await vm.updatePaths()
+                                                    }
+                                                } else if vm.pathUpdateError {
+                                                    Task {
+                                                        await vm.updatePaths()
+                                                    }
+                                                } else {
+                                                    Task {
+                                                        await vm.updateLocalAndCloud()
+                                                    }
+                                                }
+                                            } label: {
+                                                HStack(spacing: 0) {
+                                                    Text("Error syncing. Retry ")
+                                                        .font(.system(size: 14))
+                                                        .foregroundColor(.red)
+                                                    Image(systemName: "arrow.trianglehead.clockwise")
+                                                        .font(.system(size: 14))
+                                                }
+                                            }
+                                        }
+                                        else if vm.syncing {
                                             Text("Syncing ")
                                                 .font(.system(size: 14))
                                             
