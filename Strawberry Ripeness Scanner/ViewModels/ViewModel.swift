@@ -190,15 +190,19 @@ class ViewModel: NSObject, ObservableObject {
     }
     
     func addToSyncHash(_ fid: UUID) {
-        syncHash.insert(fid)
-        if !syncing && syncHash.count > 0 {self.syncing = true}
+        Task { @MainActor in
+            syncHash.insert(fid)
+            if !syncing && syncHash.count > 0 {self.syncing = true}
+        }
     }
     
     func checkSyncHash(_ fid: UUID) {
-        // print("\(fid)")
-        syncHash.remove(fid)
-        // print("\(syncHash)")
-        if syncHash.count == 0 {self.syncing = false}
+        Task { @MainActor in
+            // print("\(fid)")
+            syncHash.remove(fid)
+            // print("\(syncHash)")
+            if syncHash.count == 0 {self.syncing = false}
+        }
     }
     
     func deleteImage(_ image: MyImage) {
@@ -212,7 +216,7 @@ class ViewModel: NSObject, ObservableObject {
                     self.currentUser!.imagePaths.removeValue(forKey: "\(myImages[index].id)")
                     self.currentUser!.deletedImages["\(myImages[index].id)"] = "\(Date())"
                     self.pathsUpdated = true
-                    addToSyncHash(fid)
+                    self.addToSyncHash(fid)
                     Task {
                         await deleteImageFromCloud(path)
                         await MainActor.run {
@@ -339,14 +343,16 @@ class ViewModel: NSObject, ObservableObject {
     }
 
     func addCloudImage(myImage: MyImage, image: UIImage) {
-        do {
-            try FileManager().saveImage("\(myImage.id)", image: image)
-            self.myImages.append(myImage)
-            self.imagesHash.insert("\(myImage.id)")
-            self.saveMyImagesJSONFile()
-        } catch {
-            self.showFileAlert = true
-            self.appError = MyImageError.ErrorType(error: error as! MyImageError)
+        Task { @MainActor in
+            do {
+                try FileManager().saveImage("\(myImage.id)", image: image)
+                self.myImages.append(myImage)
+                self.imagesHash.insert("\(myImage.id)")
+                self.saveMyImagesJSONFile()
+            } catch {
+                self.showFileAlert = true
+                self.appError = MyImageError.ErrorType(error: error as! MyImageError)
+            }
         }
     }
     
@@ -437,10 +443,11 @@ class ViewModel: NSObject, ObservableObject {
     // need to make it escaping to change self.syncDone = false
     // make it optional because self.syncDone = false does not have to be set for some functions
     func uploadPhoto(_ image: MyImage, completion: (() -> Void)? = nil) {
-        // create storage reference
-        let storage = Storage.storage().reference()
         let fid = UUID()
         self.addToSyncHash(fid)
+        
+        // create storage reference
+        let storage = Storage.storage().reference()
         
         // turn image into data
         let imageData = image.image.jpegData(compressionQuality: 0.8)
@@ -470,17 +477,20 @@ class ViewModel: NSObject, ObservableObject {
         
         let _ = fileRef.putData(imageData!, metadata: metadata) { (metadata, error) in
             // check for errors
-            if error == nil && metadata != nil {
-                self.currentUser?.imagePaths["\(image.id)"] = "users/\(userID)/scans/\(image.id).jpg"
-                self.pathsUpdated = true
-                // print(self.currentUser!.imagePaths)
-            } else {
-                self.cloudError = true
-            }
-            // .putData is asynchronous so use completion function to signify uploadPhoto is done and to execute its completion
-            DispatchQueue.main.async {
+            Task { @MainActor in
+                if error == nil && metadata != nil {
+                    self.currentUser?.imagePaths["\(image.id)"] = "users/\(userID)/scans/\(image.id).jpg"
+                    self.pathsUpdated = true
+                    // print(self.currentUser!.imagePaths)
+                } else {
+                    self.cloudError = true
+                }
+                
                 // print("check hash here")
                 self.checkSyncHash(fid)
+                
+                // .putData is asynchronous so use completion function to signify uploadPhoto is done and to execute its completion
+                
                 completion?()
                 //print("\nSync: \(self.syncing)")
             }
@@ -497,7 +507,9 @@ class ViewModel: NSObject, ObservableObject {
               ])
                 print("imagePaths successfully updated!")
             } catch {
-                self.pathUpdateError = true
+                Task { @MainActor in
+                    self.pathUpdateError = true
+                }
                 print("Error updating imagePaths: \(error)")
             }
         }
@@ -517,7 +529,9 @@ class ViewModel: NSObject, ObservableObject {
             print("Image was successfully deleted from the cloud.")
         } catch {
             // error
-            cloudError = true
+            Task { @MainActor in
+                cloudError = true
+            }
             print("There was an error when attempting the image from the cloud.")
             return
         }
@@ -527,9 +541,7 @@ class ViewModel: NSObject, ObservableObject {
         // delete images that were deleted on other devices
         let fid = UUID()
         
-        Task { @MainActor in
-            addToSyncHash(fid)
-        }
+        addToSyncHash(fid)
         
         for image in myImages {
             if currentUser!.deletedImages["\(image.id)"] != nil {
@@ -590,9 +602,7 @@ class ViewModel: NSObject, ObservableObject {
             }
         }
         
-        Task { @MainActor in
-            checkSyncHash(fid)
-        }
+        checkSyncHash(fid)
         
     }
     
@@ -603,14 +613,16 @@ class ViewModel: NSObject, ObservableObject {
 
         // Download in memory with a maximum allowed size of 10MB (10 * 1024 * 1024 bytes)
         imageRef.getData(maxSize: 10 * 1024 * 1024) { data, error in
-          if let error = error {
-              self.cloudError = true
-              print("An error occured when retrieving image from cloud: \(error)\n")
-              completion(nil)
-          } else {
-              // Data for "images/island.jpg" is returned
-              completion(UIImage(data: data!))
-          }
+            Task { @MainActor in
+                if let error = error {
+                    self.cloudError = true
+                    print("An error occured when retrieving image from cloud: \(error)\n")
+                    completion(nil)
+                } else {
+                    // Data for "images/island.jpg" is returned
+                    completion(UIImage(data: data!))
+                }
+            }
         }
     }
     
@@ -620,7 +632,9 @@ class ViewModel: NSObject, ObservableObject {
         do {
             return try await imageRef.getMetadata()
         } catch {
-            cloudError = true
+            Task { @MainActor in
+                cloudError = true
+            }
             print("Error getting image metadata.\n")
             return nil
         }
