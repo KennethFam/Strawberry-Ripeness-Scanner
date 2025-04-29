@@ -86,7 +86,6 @@ struct LoginView: View {
                     // Login Button
                     Button {
                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                        viewModel.loading = true
                         viewModel.loginError = false
                         Task {
                             try await viewModel.signIn(withEmail: email,
