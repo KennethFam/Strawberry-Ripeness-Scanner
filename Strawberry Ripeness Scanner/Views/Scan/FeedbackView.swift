@@ -68,7 +68,6 @@ struct FeedbackView: View {
                                 if fbvm.feedbackError == false {
                                     path.removeLast()
                                 }
-                                fbvm.loading = false
                             })
                         } label: {
                             HStack {
