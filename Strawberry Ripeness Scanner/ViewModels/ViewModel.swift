@@ -27,6 +27,7 @@ class ViewModel: NSObject, ObservableObject {
     @Published var myImages: [MyImage] = []
     @Published var showFileAlert = false
     @Published var appError: MyImageError.ErrorType?
+    @Published var syncHash = Set<UUID>()
     @Published var imageChanged = false
     @Published var currentUser: User? 
     @Published var syncing = false {
@@ -53,7 +54,6 @@ class ViewModel: NSObject, ObservableObject {
     @Published var endDate = Date()
     @Published var loading = false
     @Published var imageSaved = false
-    @Published var cloudSyncing = false
     @Published var deletionsInProgress = false
     @Published var cloudError = false
     @Published var pathUpdateError = false
@@ -189,6 +189,17 @@ class ViewModel: NSObject, ObservableObject {
         selectedImage = myImage
     }
     
+    func addToSyncHash(_ fid: UUID) {
+        syncHash.insert(fid)
+        if !syncing && syncHash.count > 0 {self.syncing = true}
+    }
+    
+    func checkSyncHash(_ fid: UUID) {
+        // print("\(fid)")
+        syncHash.remove(fid)
+        // print("\(syncHash)")
+        if syncHash.count == 0 {self.syncing = false}
+    }
     
     func deleteImage(_ image: MyImage) {
         if let index = myImages.firstIndex(where: {$0.id == image.id}) {
@@ -197,10 +208,11 @@ class ViewModel: NSObject, ObservableObject {
             }
             if self.currentUser != nil {
                 if let path = self.currentUser!.imagePaths["\(myImages[index].id)"] {
+                    let fid = UUID()
                     self.currentUser!.imagePaths.removeValue(forKey: "\(myImages[index].id)")
                     self.currentUser!.deletedImages["\(myImages[index].id)"] = "\(Date())"
                     self.pathsUpdated = true
-                    self.syncing = true
+                    addToSyncHash(fid)
                     Task {
                         await deleteImageFromCloud(path)
                         await MainActor.run {
@@ -208,10 +220,7 @@ class ViewModel: NSObject, ObservableObject {
                                 self.totalToDelete -= 1
                                 print("Total to delete in MainActor: \(totalToDelete)")
                             }
-                            if !self.cloudSyncing {
-                                self.syncing = false
-                                print("syncing set to false in deleteImage")
-                            }
+                            checkSyncHash(fid)
                         }
                     }
                 }
@@ -314,13 +323,7 @@ class ViewModel: NSObject, ObservableObject {
                 self.loadImages()
                 self.saveMyImagesJSONFile()
                 if self.currentUser != nil {
-                    self.syncing = true
-                    self.uploadPhoto(myImage) {
-                        DispatchQueue.main.async {
-                            self.syncing = false
-                            //print("\nSync: \(self.syncing)")
-                        }
-                    }
+                    self.uploadPhoto(myImage)
                 }
             } catch {
                 self.showFileAlert = true
@@ -436,6 +439,8 @@ class ViewModel: NSObject, ObservableObject {
     func uploadPhoto(_ image: MyImage, completion: (() -> Void)? = nil) {
         // create storage reference
         let storage = Storage.storage().reference()
+        let fid = UUID()
+        self.addToSyncHash(fid)
         
         // turn image into data
         let imageData = image.image.jpegData(compressionQuality: 0.8)
@@ -473,7 +478,12 @@ class ViewModel: NSObject, ObservableObject {
                 self.cloudError = true
             }
             // .putData is asynchronous so use completion function to signify uploadPhoto is done and to execute its completion
-            completion?()
+            DispatchQueue.main.async {
+                // print("check hash here")
+                self.checkSyncHash(fid)
+                completion?()
+                //print("\nSync: \(self.syncing)")
+            }
         }
     }
     
@@ -515,10 +525,12 @@ class ViewModel: NSObject, ObservableObject {
     
     func updateLocalAndCloud() async {
         // delete images that were deleted on other devices
+        let fid = UUID()
+        
         Task { @MainActor in
-            self.syncing = true
-            self.cloudSyncing = true
+            addToSyncHash(fid)
         }
+        
         for image in myImages {
             if currentUser!.deletedImages["\(image.id)"] != nil {
                 print("Deleting image: \(image.id)")
@@ -571,30 +583,17 @@ class ViewModel: NSObject, ObservableObject {
         }
         
         // Store local images on cloud
-        var count = 0
-        var total = 0
         for myImage in myImages {
             if currentUser!.imagePaths["\(myImage.id)"] == nil {
-                total += 1
                 // print("Uploading image \(myImage.id)...\n")
-                uploadPhoto(myImage) {
-                    // forces UI updates to run on main thread
-                    Task { @MainActor in
-                        count += 1
-                        if count == total {
-                            self.cloudSyncing = false
-                            self.syncing = false
-                        }
-                    }
-                }
+                uploadPhoto(myImage)
             }
         }
-        if total == 0 {
-            Task { @MainActor in
-                self.cloudSyncing = false
-                self.syncing = false
-            }
+        
+        Task { @MainActor in
+            checkSyncHash(fid)
         }
+        
     }
     
     // imageRef is async since uses getData, but it seems that FireBase has not yet used Swift's new async feature
