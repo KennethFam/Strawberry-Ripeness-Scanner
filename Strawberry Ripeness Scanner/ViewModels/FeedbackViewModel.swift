@@ -15,9 +15,10 @@ class FeedbackViewModel: ObservableObject {
     @Published var contactError = false
     
     func uploadFeedback(_ image: MyImage, feedback: String, email: String, userID: String, completion: (() -> Void)? = nil) {
+        self.loading = true
+        
         let feedbackID = UUID()
         let feedbackDate = Date()
-        loading = true
         // create storage reference
         let storage = Storage.storage().reference()
         
@@ -57,17 +58,28 @@ class FeedbackViewModel: ObservableObject {
                 self.feedbackError = true
                 print("Feedback submission failed!\n")
             }
+            
+            self.loading = false
+            
             // .putData is asynchronous so use completion function to signify uploadPhoto is done and to execute its completion
             completion?()
         }
     }
     
     func uploadIssue(_ issue: String, subject: String, email: String, userID: String) async throws {
+        Task { @MainActor in
+            self.loading = true
+        }
         let ticketID = UUID()
         let ticketDate = Date()
         let db = Firestore.firestore()
         
         do {
+            defer {
+                Task { @MainActor in
+                    self.loading = false
+                }
+            }
             try await db.collection("support_tickets").document("\(ticketID)").setData([
             "Ticket ID": "\(ticketID)",
             "User ID": userID,
