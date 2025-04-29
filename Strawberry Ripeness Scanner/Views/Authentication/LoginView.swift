@@ -47,6 +47,19 @@ struct LoginView: View {
                                   title: "Password",
                                   placeholder: "Enter your password",
                                   isSecureField: true)
+                        // Forgot Password Button
+                        NavigationLink {
+                            ForgotPassword()
+                                .navigationBarBackButtonHidden(true)
+                        } label: {
+                            HStack(spacing: 3) {
+                                Text("Forgot your password?")
+                            }
+                            .font(.system(size: 14))
+                        }
+                        .frame(maxWidth: UIScreen.main.bounds.width - 32, alignment: .trailing)
+                        .padding(.top, -20)
+                        .padding(.bottom, -20)
                         
                        
                         if viewModel.loginError == true {
@@ -103,19 +116,6 @@ struct LoginView: View {
                         HStack(spacing: 3) {
                             Text("Dont have an account?")
                             Text("Sign Up")
-                                .fontWeight(.bold)
-                        }
-                        .font(.system(size: 14))
-                    }
-                    
-                    // Forgot Password Button
-                    NavigationLink {
-                        ForgotPassword()
-                            .navigationBarBackButtonHidden(true)
-                    } label: {
-                        HStack(spacing: 3) {
-                            Text("Forgot your password?")
-                            Text("Reset It")
                                 .fontWeight(.bold)
                         }
                         .font(.system(size: 14))
