@@ -183,7 +183,6 @@ struct RegistrationView: View {
                 
                 Button {
                     UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                    viewModel.loading = true
                     viewModel.emailInUse = false
                     Task {
                         try await viewModel.createUser(withEmail: email,
