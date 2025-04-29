@@ -83,14 +83,12 @@ struct ContactView: View {
                     
                     Button {
                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                        fbvm.loading = true
                         fbvm.contactError = false
                         Task {
                             defer {
                                 if fbvm.contactError == false {
                                     path.removeLast()
                                 }
-                                fbvm.loading = false
                             }
                             try await fbvm.uploadIssue(issue, subject: subject, email: email, userID: viewModel.currentUser?.id ?? "")
                         }
