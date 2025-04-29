@@ -65,9 +65,16 @@ class AuthViewModel: ObservableObject {
     }
     
     func signIn(withEmail email: String, password: String) async throws {
+        Task { @MainActor in
+            self.loading = true
+        }
         do {
             // runs whether function fails or throws error
-            defer { self.loading = false }
+            defer {
+                Task { @MainActor in
+                    self.loading = false
+                }
+            }
             let result = try await Auth.auth().signIn(withEmail: email, password: password)
             self.userSession = result.user
             // remember to fetch user information otherwise app restart is required
@@ -79,9 +86,16 @@ class AuthViewModel: ObservableObject {
     }
     
     func createUser(withEmail email: String, password: String, fullname: String) async throws {
+        Task { @MainActor in
+            self.loading = true
+        }
         do {
             // runs whether function fails or throws error
-            defer { self.loading = false }
+            defer {
+                Task { @MainActor in
+                    self.loading = false
+                }
+            }
             let result = try await Auth.auth().createUser(withEmail: email, password: password)
             self.userSession = result.user
             let user = User(id: result.user.uid, fullname: fullname, email: email, imagePaths: [String: String]())
@@ -103,6 +117,7 @@ class AuthViewModel: ObservableObject {
     }
     
     func signOut() {
+        loading = true
         do {
             // runs whether function fails or throws error
             if let userListener = userListener {
@@ -122,6 +137,7 @@ class AuthViewModel: ObservableObject {
     }
     
     func deleteAccount() async {
+        loading = true
         let user = Auth.auth().currentUser
         
         if let userListener = userListener {
