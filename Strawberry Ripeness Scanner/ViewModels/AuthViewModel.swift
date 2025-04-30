@@ -22,6 +22,7 @@ class AuthViewModel: ObservableObject {
     @Published var userSession: FirebaseAuth.User?
     @Published var currentUser: User?
     @Published var loading = false
+    @Published var loadingText = ""
     @Published var deleteAccError = false
     @Published var loginError = false
     @Published var emailInUse = false
@@ -65,7 +66,8 @@ class AuthViewModel: ObservableObject {
     }
     
     func signIn(withEmail email: String, password: String) async throws {
-        Task { @MainActor in
+        await MainActor.run {
+            self.loadingText = "Signing in..."
             self.loading = true
         }
         do {
@@ -73,20 +75,26 @@ class AuthViewModel: ObservableObject {
             defer {
                 Task { @MainActor in
                     self.loading = false
+                    self.loadingText = ""
                 }
             }
             let result = try await Auth.auth().signIn(withEmail: email, password: password)
-            self.userSession = result.user
+            await MainActor.run {
+                self.userSession = result.user
+            }
             // remember to fetch user information otherwise app restart is required
             await fetchUser()
         } catch {
-            loginError = true
+            await MainActor.run {
+                loginError = true
+            }
             print("DEBUG: Failed to log in with error \(error.localizedDescription)")
         }
     }
     
     func createUser(withEmail email: String, password: String, fullname: String) async throws {
         Task { @MainActor in
+            self.loadingText = "Creating Account..."
             self.loading = true
         }
         do {
@@ -94,10 +102,13 @@ class AuthViewModel: ObservableObject {
             defer {
                 Task { @MainActor in
                     self.loading = false
+                    self.loadingText = ""
                 }
             }
             let result = try await Auth.auth().createUser(withEmail: email, password: password)
-            self.userSession = result.user
+            await MainActor.run {
+                self.userSession = result.user
+            }
             let user = User(id: result.user.uid, fullname: fullname, email: email, imagePaths: [String: String]())
             let encodedUser = try Firestore.Encoder().encode(user)
             try await Firestore.firestore().collection("users").document(user.id).setData(encodedUser)
@@ -108,7 +119,9 @@ class AuthViewModel: ObservableObject {
                 let code = AuthErrorCode(rawValue: error.code)
                 switch code {
                 case .emailAlreadyInUse:
-                    self.emailInUse = true
+                    await MainActor.run {
+                        self.emailInUse = true
+                    }
                 default:
                     print("DEBUG: Failed to create user with error \(error.localizedDescription)")
                 }
@@ -117,14 +130,16 @@ class AuthViewModel: ObservableObject {
     }
     
     func signOut() {
+        loadingText = "Signing out..."
         loading = true
         do {
-            // runs whether function fails or throws error
             if let userListener = userListener {
                 userListener.remove()
             }
+            // runs whether function fails or throws error
             defer {
                 self.loading = false
+                self.loadingText = ""
                 self.imagePathSync()
             }
             try Auth.auth().signOut() // signs out user on backend
@@ -136,8 +151,10 @@ class AuthViewModel: ObservableObject {
         }
     }
     
-    func deleteAccount() async {
+    func deleteAccount() {
+        self.loadingText = "Deleting account..."
         loading = true
+        
         let user = Auth.auth().currentUser
         
         if let userListener = userListener {
@@ -145,39 +162,48 @@ class AuthViewModel: ObservableObject {
         }
         
         user?.delete { error in
-            if let error = error {
-                self.deleteAccError = true
-                print("DEBUG: Failed to delete user. Error: \(error)")
-                return
-            } else {
-                // set session variables to nil
-                print("User successfully deleted.")
-                self.userSession = nil
-                self.currentUser = nil
+            DispatchQueue.main.async {
+                if let error = error {
+                    self.deleteAccError = true
+                    print("DEBUG: Failed to delete user. Error: \(error)")
+                    return
+                } else {
+                    // set session variables to nil
+                    print("User successfully deleted.")
+                    self.userSession = nil
+                    self.currentUser = nil
+                }
+                self.loading = false
+                self.loadingText = ""
+                self.imagePathSync()
             }
-            self.loading = false
-            self.imagePathSync()
         }
     }
     
     func forgotPassword(_ email: String, completion: (() -> Void)? = nil) {
+        self.loadingText = "Sending..."
         self.loading = true
         let auth = Auth.auth()
         
         auth.sendPasswordReset(withEmail: email) { (error) in
-            if let error = error {
-                self.passResetError = true
-                print("Send password reset failed. Error: \(error.localizedDescription)")
+            DispatchQueue.main.async {
+                if let error = error {
+                    self.passResetError = true
+                    print("Send password reset failed. Error: \(error.localizedDescription)")
+                }
+                self.loading = false
+                self.loadingText = ""
+                completion?()
             }
-            self.loading = false
-            completion?()
         }
     }
     
     private func fetchUser() async {
         guard let uid = Auth.auth().currentUser?.uid else { return }
         guard let snapshot = try? await Firestore.firestore().collection("users").document(uid).getDocument() else { return }
-        self.currentUser = try? snapshot.data(as: User.self)
+        await MainActor.run {
+            self.currentUser = try? snapshot.data(as: User.self)
+        }
         imagePathSync()
     }
     
@@ -185,22 +211,24 @@ class AuthViewModel: ObservableObject {
         let cloudControlCollection = Firestore.firestore().collection("cloud_control")
         
         cloudControlCollection.document("on_off").addSnapshotListener { documentSnapshot, error in
-            if let error = error {
-                print("Error retrieving cloud status. Error: \(error)\n")
-                return
+            DispatchQueue.main.async {
+                if let error = error {
+                    print("Error retrieving cloud status. Error: \(error)\n")
+                    return
+                }
+                
+                guard let document = documentSnapshot else {
+                    print("Error fetching document: \(error!)")
+                    return
+                }
+                guard let data = document.data() else {
+                    print("Document data was empty.")
+                    return
+                }
+                
+                self.cloudEnabledStatus = data["enabled"] as! Bool
+                print("Cloud Status: \(self.cloudEnabledStatus)")
             }
-            
-            guard let document = documentSnapshot else {
-              print("Error fetching document: \(error!)")
-              return
-            }
-            guard let data = document.data() else {
-                print("Document data was empty.")
-                return
-            }
-            
-            self.cloudEnabledStatus = data["enabled"] as! Bool
-            print("Cloud Status: \(self.cloudEnabledStatus)")
         }
     }
     
@@ -209,23 +237,30 @@ class AuthViewModel: ObservableObject {
         
         if let userID = currentUser?.id {
             userListener = userControlCollection.document(userID).addSnapshotListener { documentSnapshot, error in
-                if let error = error {
-                    print("Error retrieving user data snapshot. Error: \(error)\n")
-                    return
+                DispatchQueue.main.async {
+                    if let error = error {
+                        print("Error retrieving user data snapshot. Error: \(error)\n")
+                        return
+                    }
+                    
+                    guard let snapshot = documentSnapshot else {
+                        print("Error fetching user document for syncing: \(error!)")
+                        return
+                    }
+                    
+                    guard snapshot.exists else {
+                        self.signOut()
+                        return
+                    }
+                    
+                    do {
+                        self.currentUser = try snapshot.data(as: User.self)
+                    } catch {
+                        print("Error retrieving user.\n")
+                    }
+                    
+                    print("User Sync Status: \(self.cloudEnabledStatus)")
                 }
-                
-                guard let snapshot = documentSnapshot else {
-                  print("Error fetching user document for syncing: \(error!)")
-                  return
-                }
-                
-                do {
-                    self.currentUser = try snapshot.data(as: User.self)
-                } catch {
-                    print("Error retrieving user.\n")
-                }
-                
-                print("User Sync Status: \(self.cloudEnabledStatus)")
             }
         }
     }
