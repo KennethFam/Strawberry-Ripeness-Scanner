@@ -10,7 +10,6 @@ import SwiftUI
 struct ProfileView: View {
     @EnvironmentObject var viewModel: AuthViewModel
     @EnvironmentObject var vm: ViewModel
-    @State var loadingText = "Syncing Photos..."
     @State var syncLoading = false
     @State var logOut = false
     @State var deleteAcc = false
@@ -72,10 +71,10 @@ struct ProfileView: View {
                         }
                         .confirmationDialog("Are you sure you want to sign out?", isPresented: $showSignOutConfirmation, titleVisibility: .visible) {
                             Button("Sign Out", role: .destructive) {
-                                loadingText = "Signing out..."
                                 if !vm.syncing {
                                     viewModel.signOut()
                                 } else {
+                                    viewModel.loadingText = "Syncing photos..."
                                     syncLoading = true
                                     logOut = true
                                 }
@@ -103,12 +102,10 @@ struct ProfileView: View {
                         }
                         .confirmationDialog("Are you sure you want to delete your account?", isPresented: $showDeleteAccountConfirmation, titleVisibility: .visible) {
                             Button("Delete Account", role: .destructive) {
-                                loadingText = "Deleting Account..."
                                 if !vm.syncing {
-                                    Task {
-                                        await viewModel.deleteAccount()
-                                    }
+                                    viewModel.deleteAccount()
                                 } else {
+                                    viewModel.loadingText = "Syncing photos..."
                                     syncLoading = true
                                     deleteAcc = true
                                 }
@@ -129,23 +126,21 @@ struct ProfileView: View {
                 }
                 
                 if viewModel.loading || syncLoading {
-                    LoadingView(text: loadingText)
+                    LoadingView(text: viewModel.loadingText)
                 }
             }
             .onChange(of: vm.syncing) {
                 print(vm.syncing)
                 if !vm.syncing {
-                    if syncLoading { syncLoading = false }
                     if logOut {
                         print("\nSigning out right now!\n")
                         viewModel.signOut()
                         logOut = false
                     } else if deleteAcc {
-                        Task {
-                            defer {deleteAcc = false}
-                            await viewModel.deleteAccount()
-                        }
+                        viewModel.deleteAccount()
+                        deleteAcc = false
                     }
+                    if syncLoading { syncLoading = false }
                 }
             }
         }
