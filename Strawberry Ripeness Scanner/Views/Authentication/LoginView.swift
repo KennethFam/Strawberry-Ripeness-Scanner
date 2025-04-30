@@ -123,7 +123,7 @@ struct LoginView: View {
                     Spacer()
                 }
                 if viewModel.loading {
-                    LoadingView(text: "Signing in...")
+                    LoadingView(text: viewModel.loadingText)
                 }
             }
         }
