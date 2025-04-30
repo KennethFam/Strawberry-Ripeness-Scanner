@@ -19,6 +19,17 @@ struct ContactView: View {
     var body: some View {
         if nm.connected == false {
             NoConnectionView()
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        if path.count > 1 {
+                            Button {
+                                path.removeAll()
+                            } label: {
+                                Image(systemName: "house.fill")
+                            }
+                        }
+                    }
+                }
         } else {
             ZStack {
                 VStack {
@@ -119,6 +130,17 @@ struct ContactView: View {
                 }
                 if fbvm.loading {
                     LoadingView(text: "Submitting ticket...")
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    if path.count > 1 {
+                        Button {
+                            path.removeAll()
+                        } label: {
+                            Image(systemName: "house.fill")
+                        }
+                    }
                 }
             }
         }
