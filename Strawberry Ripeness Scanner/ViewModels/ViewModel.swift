@@ -29,17 +29,27 @@ class ViewModel: NSObject, ObservableObject {
     @Published var appError: MyImageError.ErrorType?
     @Published var syncHash = Set<UUID>()
     @Published var imageChanged = false
-    @Published var currentUser: User? 
+    @Published var currentUser: User? {
+        didSet {
+            Task { @MainActor in
+                if currentUser == nil && syncing {
+                    syncing = false
+                }
+            }
+        }
+    }
     @Published var syncing = false {
         didSet {
-            if !syncing {
-                if deleteImages {
-                    deleteImages = false
-                    deleteAllImages()
-                }
-                if cloudImageAdded {
-                    loadImages()
-                    cloudImageAdded = false
+            Task { @MainActor in
+                if !syncing {
+                    if deleteImages {
+                        deleteImages = false
+                        deleteAllImages()
+                    }
+                    if cloudImageAdded {
+                        loadImages()
+                        cloudImageAdded = false
+                    }
                 }
             }
         }
@@ -59,10 +69,16 @@ class ViewModel: NSObject, ObservableObject {
     @Published var pathUpdateError = false
     @Published var deleteImages = false {
         didSet {
-            if deleteImages {
-                if !syncing {
-                    deleteImages = false
-                    deleteAllImages()
+            Task { @MainActor in
+                if deleteImages {
+                    if self.currentUser == nil {
+                        deleteImages = false
+                        deleteAllImages()
+                    }
+                    else if !syncing {
+                        deleteImages = false
+                        deleteAllImages()
+                    }
                 }
             }
         }
@@ -75,11 +91,14 @@ class ViewModel: NSObject, ObservableObject {
     
     private var totalToDelete = 0 {
         didSet {
-            if deletionsInProgress {
-                print("Total to Delete: \(totalToDelete)")
-                if totalToDelete == 0 {
-                    deletionsInProgress = false
-                    loading = false
+            Task { @MainActor in
+                if deletionsInProgress {
+                    print("Total to Delete: \(totalToDelete)")
+                    if totalToDelete == 0 {
+                        deletionsInProgress = false
+                        loading = false
+                        pathsUpdated = true
+                    }
                 }
             }
         }
@@ -88,10 +107,12 @@ class ViewModel: NSObject, ObservableObject {
     private let objectRecognizer = ObjectRecognizer()
     private var cloudImageAdded = false {
         didSet {
-            if cloudImageAdded {
-                if !syncing {
-                    loadImages()
-                    cloudImageAdded = false
+            Task { @MainActor in
+                if cloudImageAdded {
+                    if !syncing {
+                        loadImages()
+                        cloudImageAdded = false
+                    }
                 }
             }
         }
@@ -211,11 +232,10 @@ class ViewModel: NSObject, ObservableObject {
                 reset()
             }
             if self.currentUser != nil {
-                if let path = self.currentUser!.imagePaths["\(myImages[index].id)"] {
+                if let path = self.currentUser?.imagePaths["\(myImages[index].id)"] {
                     let fid = UUID()
-                    self.currentUser!.imagePaths.removeValue(forKey: "\(myImages[index].id)")
-                    self.currentUser!.deletedImages["\(myImages[index].id)"] = "\(Date())"
-                    self.pathsUpdated = true
+                    self.currentUser?.imagePaths.removeValue(forKey: "\(myImages[index].id)")
+                    self.currentUser?.deletedImages["\(myImages[index].id)"] = "\(Date())"
                     self.addToSyncHash(fid)
                     Task {
                         await deleteImageFromCloud(path)
@@ -395,48 +415,50 @@ class ViewModel: NSObject, ObservableObject {
     }
     
     func loadImages() {
-        ripe = 0
-        unripe = 0
-        nearlyRipe = 0
-        rotten = 0
-//        if self.cloudImageAdded {
-//            myImages.sort(by: {$0.date < $1.date})
-//            print("Images were sorted!\n")
-//        }
-        if reversedOrder {
-            myImages.sort(by: {$0.date > $1.date})
-        } else {
-            myImages.sort(by: {$0.date < $1.date})
-        }
-        
-        switch interval {
-        case .allTime:
-            displayedImages = myImages
-        case .today:
-            displayedImages = []
-            let today = formatter.string(from: Date())
-            for image in myImages {
-                if formatter.string(from: image.date) == today {
-                    displayedImages.append(image)
+        Task { @MainActor in
+            ripe = 0
+            unripe = 0
+            nearlyRipe = 0
+            rotten = 0
+            //        if self.cloudImageAdded {
+            //            myImages.sort(by: {$0.date < $1.date})
+            //            print("Images were sorted!\n")
+            //        }
+            if reversedOrder {
+                myImages.sort(by: {$0.date > $1.date})
+            } else {
+                myImages.sort(by: {$0.date < $1.date})
+            }
+            
+            switch interval {
+            case .allTime:
+                displayedImages = myImages
+            case .today:
+                displayedImages = []
+                let today = formatter.string(from: Date())
+                for image in myImages {
+                    if formatter.string(from: image.date) == today {
+                        displayedImages.append(image)
+                    }
+                }
+            case .custom:
+                displayedImages = []
+                var imageDate: String
+                let startDate = formatter.string(from: self.date)
+                let stopDate = formatter.string(from: self.endDate)
+                for image in myImages {
+                    imageDate = formatter.string(from: image.date)
+                    if (startDate <= imageDate) && (imageDate <= stopDate) {
+                        displayedImages.append(image)
+                    }
                 }
             }
-        case .custom:
-            displayedImages = []
-            var imageDate: String
-            let startDate = formatter.string(from: self.date)
-            let stopDate = formatter.string(from: self.endDate)
-            for image in myImages {
-                imageDate = formatter.string(from: image.date)
-                if (startDate <= imageDate) && (imageDate <= stopDate) {
-                    displayedImages.append(image)
-                }
+            for image in displayedImages {
+                ripe += image.ripe
+                unripe += image.unripe
+                nearlyRipe += image.nearlyRipe
+                rotten += image.rotten
             }
-        }
-        for image in displayedImages {
-            ripe += image.ripe
-            unripe += image.unripe
-            nearlyRipe += image.nearlyRipe
-            rotten += image.rotten
         }
     }
     
@@ -501,10 +523,12 @@ class ViewModel: NSObject, ObservableObject {
         if let user = self.currentUser {
             let db = Firestore.firestore().collection("users").document(user.id)
             do {
-              try await db.updateData([
-                "imagePaths": currentUser!.imagePaths,
-                "deletedImages": currentUser!.deletedImages
-              ])
+                guard let imagePaths = currentUser?.imagePaths else { return }
+                guard let deletedImages = currentUser?.deletedImages else { return }
+                try await db.updateData([
+                "imagePaths": imagePaths,
+                "deletedImages": deletedImages
+                ])
                 print("imagePaths successfully updated!")
             } catch {
                 Task { @MainActor in
@@ -544,7 +568,7 @@ class ViewModel: NSObject, ObservableObject {
         addToSyncHash(fid)
         
         for image in myImages {
-            if currentUser!.deletedImages["\(image.id)"] != nil {
+            if currentUser?.deletedImages["\(image.id)"] != nil {
                 print("Deleting image: \(image.id)")
                 Task { @MainActor in
                     deleteImage(image)
@@ -554,15 +578,18 @@ class ViewModel: NSObject, ObservableObject {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd HH:mm:ss Z"
         // Retrieving images stored on cloud
-        for (id, path) in currentUser!.imagePaths {
+        guard let user = currentUser?.imagePaths else {
+            return
+        }
+        for (id, path) in user {
             if imagesHash.contains(id) {
 //                print("Hashset: \(imagesHash), images: \(myImages)\n")
                 continue
             }
-            if currentUser!.deletedImages["\(id)"] != nil {
-                if currentUser!.imagePaths["\(id)"] != nil {
+            if currentUser?.deletedImages["\(id)"] != nil {
+                if currentUser?.imagePaths["\(id)"] != nil {
                     Task { @MainActor in
-                        currentUser!.imagePaths.removeValue(forKey: "\(id)")
+                        currentUser?.imagePaths.removeValue(forKey: "\(id)")
                         pathsUpdated = true
                     }
                 }
@@ -596,7 +623,7 @@ class ViewModel: NSObject, ObservableObject {
         
         // Store local images on cloud
         for myImage in myImages {
-            if currentUser!.imagePaths["\(myImage.id)"] == nil {
+            if currentUser?.imagePaths["\(myImage.id)"] == nil {
                 // print("Uploading image \(myImage.id)...\n")
                 uploadPhoto(myImage)
             }
