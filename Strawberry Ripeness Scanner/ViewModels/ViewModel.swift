@@ -50,6 +50,12 @@ class ViewModel: NSObject, ObservableObject {
                         loadImages()
                         cloudImageAdded = false
                     }
+                    if pathsUpdated {
+                        pathsUpdated = false
+                        Task {
+                            await updatePaths()
+                        }
+                    }
                 }
             }
         }
@@ -164,10 +170,12 @@ class ViewModel: NSObject, ObservableObject {
     
     var pathsUpdated = false {
         didSet {
-            if pathsUpdated {
-                Task {
-                    defer { pathsUpdated = false }
-                    await updatePaths()
+            Task { @MainActor in
+                if !syncing && pathsUpdated {
+                    Task {
+                        defer { pathsUpdated = false }
+                        await updatePaths()
+                    }
                 }
             }
         }
