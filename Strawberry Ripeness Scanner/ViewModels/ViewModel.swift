@@ -50,12 +50,6 @@ class ViewModel: NSObject, ObservableObject {
                         loadImages()
                         cloudImageAdded = false
                     }
-                    if pathsUpdated {
-                        pathsUpdated = false
-                        Task {
-                            await updatePaths()
-                        }
-                    }
                 }
             }
         }
@@ -230,7 +224,13 @@ class ViewModel: NSObject, ObservableObject {
             // print("\(fid)")
             syncHash.remove(fid)
             // print("\(syncHash)")
-            if syncHash.count == 0 {self.syncing = false}
+            if syncHash.count == 0 {
+                if pathsUpdated {
+                    await updatePaths()
+                    pathsUpdated = false
+                }
+                self.syncing = false
+            }
         }
     }
     
@@ -531,8 +531,8 @@ class ViewModel: NSObject, ObservableObject {
         if let user = self.currentUser {
             let db = Firestore.firestore().collection("users").document(user.id)
             do {
-                guard let imagePaths = currentUser?.imagePaths else { return }
-                guard let deletedImages = currentUser?.deletedImages else { return }
+                let imagePaths = user.imagePaths
+                let deletedImages = user.deletedImages
                 try await db.updateData([
                 "imagePaths": imagePaths,
                 "deletedImages": deletedImages
