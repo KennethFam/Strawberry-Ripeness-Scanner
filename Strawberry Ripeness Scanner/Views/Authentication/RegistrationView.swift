@@ -218,7 +218,7 @@ struct RegistrationView: View {
                 Spacer()
             }
             if viewModel.loading {
-                LoadingView(text: "Registering...")
+                LoadingView(text: viewModel.loadingText)
             }
         }
     }
