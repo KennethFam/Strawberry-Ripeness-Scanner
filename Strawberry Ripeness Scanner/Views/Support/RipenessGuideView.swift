@@ -43,6 +43,17 @@ struct RipenessGuideView: View {
                 Spacer()
             }
         }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                if path.count > 1 {
+                    Button {
+                        path.removeAll()
+                    } label: {
+                        Image(systemName: "house.fill")
+                    }
+                }
+            }
+        }
     }
 }
 
