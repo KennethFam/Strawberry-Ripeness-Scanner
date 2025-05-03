@@ -1,5 +1,41 @@
 # Strawberry Ripeness Scanner 
 
+# Code Structure
+There are 5 folders:
+- README Images
+- Strawberry Ripeness Scanner
+- Strawberry Ripeness Scanner.xcodeproj
+- Strawberry Ripeness ScannerTests
+- Strawberry Ripeness ScannerUITests
+
+For the code structure, we only need to worry about "Strawberry Ripeness Scanner". This folder contains all of the code and pictures used in the app. 
+
+Here are the folders/files in the "Strawberry Ripeness Scanner" and their role in this project:
+- Assets.xcassets
+    - Contains all the photos used in the app (e.g. app logo, app icon, etc.).
+- Components
+    - Components that are reused in the app (e.g. a custom button, page title format, etc.).
+- CoreML
+    - Contains the YOLOv12n model that was converted to CoreML along with the classes that are used to interact with the model.
+- Extensions
+    - Extension code to some prebuilt classes in SwiftUI or UIKit.
+- Models 
+    - Structures or enums that are used to model something (e.g. a user, time interval, etc.).
+- Monitors
+    - Contains code that monitors something. For now, we only have a network monitor in there to monitor internet connection.
+- Preview Content
+    - Contains the Contents.json file.
+- UIViewRepresentables
+    - Contains code to wrap UIKit UIViews so that it can be used in SwiftUI. Here, we have code for selecting an image from the camera or photo album and for zooming in and out of the image selected by the user in the app.
+- ViewModels
+    - Contains the code used to manage logic and data for the views.
+- Views
+    - Contains all the views or pages in the app categorized into different folders.
+- Launch Screen.storyboard
+    - Contains the app splash/boot-up screen.
+- Strawberry_Ripeness_ScannerApp
+    - This is considered the "main" file.
+
 ## Installation
 If you are on an iOS device (iPhone or iPad with iOS 18.2 or newer version installed), you can download the app using [this link](https://apps.apple.com/us/app/strawberry-ripeness-scanner/id6745130849) or the QR code below:
 
