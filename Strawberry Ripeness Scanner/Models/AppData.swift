@@ -6,5 +6,5 @@
 //
 
 struct AppData {
-    static let version: String = "1.0"
+    static let version: String = "1.1"
 }
