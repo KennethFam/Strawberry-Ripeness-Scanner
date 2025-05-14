@@ -42,7 +42,7 @@ class AuthViewModel: ObservableObject {
         didSet {
             if !cloudEnabledStatus {
                 if let syncing = syncing {
-                    if !cloudEnabledStatus && !syncing && userSession != nil {
+                    if !cloudEnabledStatus && !syncing && currentUser != nil {
                         signOut()
                     }
                 }
