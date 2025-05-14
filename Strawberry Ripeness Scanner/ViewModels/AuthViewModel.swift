@@ -31,14 +31,14 @@ class AuthViewModel: ObservableObject {
     @Published var syncing: Bool? {
         didSet {
             if !syncing! {
-                if !cloudEnabledStatus && userSession != nil{
+                if !cloudEnabledStatus && currentUser != nil{
                     signOut()
                 }
             }
         }
     }
 
-    @Published var cloudEnabledStatus = true {
+    @Published var cloudEnabledStatus = false {
         didSet {
             if !cloudEnabledStatus {
                 if let syncing = syncing {
